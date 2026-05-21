@@ -23,7 +23,10 @@ async def stream_fm(request: Request, frequency: float):
         return StreamingResponse(
             _svc.stream(frequency),
             media_type="audio/mpeg",
-            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
     except Exception as exc:
         LOGGER.exception("stream endpoint failed for freq=%s: %s", frequency, exc)
