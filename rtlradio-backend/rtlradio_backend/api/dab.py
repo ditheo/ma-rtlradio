@@ -139,7 +139,6 @@ async def dab_play_by_name(name: str):
                 "Cache-Control": "no-cache",
                 "X-Content-Type-Options": "nosniff",
                 "X-Station-Id": station_id,
-                "X-Station-Name": exact_playable.get("name") or "",
             },
         )
     except Exception as exc:
