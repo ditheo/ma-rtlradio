@@ -1,13 +1,10 @@
 ARG BUILD_FROM
 FROM ${BUILD_FROM}
 
-RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    rtl-sdr \
-    ffmpeg \
-    curl \
-    kmod
+RUN printf '%s
+'   'https://dl-cdn.alpinelinux.org/alpine/v3.21/main'   'https://dl-cdn.alpinelinux.org/alpine/v3.21/community'   'https://dl-cdn.alpinelinux.org/alpine/edge/main'   'https://dl-cdn.alpinelinux.org/alpine/edge/community'   'https://dl-cdn.alpinelinux.org/alpine/edge/testing'   > /etc/apk/repositories
+
+RUN apk add --no-cache     python3     py3-pip     rtl-sdr     ffmpeg     curl     kmod     bash     welle-cli
 
 WORKDIR /app
 
@@ -18,5 +15,5 @@ COPY rtlradio_backend/ ./rtlradio_backend/
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-EXPOSE 8080
+EXPOSE 7070
 CMD ["/run.sh"]
