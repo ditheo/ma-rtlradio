@@ -237,17 +237,38 @@ class DabService:
             session = aiohttp.ClientSession()
             resp = None
             try:
+                last_status = None
+                last_body = ""
+
                 for attempt in range(8):
                     resp = await session.get(upstream_url, timeout=None)
                     if resp.status == 200:
                         break
 
-                    body = await resp.text()
+                    last_status = resp.status
+                    last_body = await resp.text()
                     resp.close()
+                    resp = None
 
                     if attempt < 7:
                         await asyncio.sleep(1.0)
                         continue
 
-                    raise RuntimeError(
-                        f"upstream 
+                    msg = (
+                        f"upstream stream failed: {last_status} "
+                        f"url={upstream_url} body={last_body[:300]}"
+                    )
+                    raise RuntimeError(msg)
+
+                async for chunk in resp.content.iter_chunked(4096):
+                    if chunk:
+                        yield chunk
+            finally:
+                try:
+                    if resp is not None:
+                        resp.close()
+                except Exception:
+                    pass
+                await session.close()
+
+        return generator()
