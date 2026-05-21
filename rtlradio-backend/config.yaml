@@ -11,7 +11,7 @@ usb: true
 privileged:
   - SYS_MODULE
 ports:
-  8080/tcp: 8080
+  7070/tcp: 7070
 ports_description:
   8080/tcp: "RTL-SDR Radio Backend API"
 options:
