@@ -1,7 +1,10 @@
 import asyncio
 from contextlib import suppress
+from datetime import datetime, timezone
 
 import aiohttp
+
+from . import radio_state
 
 
 class DabService:
@@ -9,10 +12,13 @@ class DabService:
         self._proc = None
         self._block = None
         self._port = None
+        self._default_block = "5A"
+
+    def _utcnow(self) -> str:
+        return datetime.now(timezone.utc).isoformat()
 
     async def info(self):
         cmd = ["welle-cli", "-h"]
-
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -20,7 +26,6 @@ class DabService:
                 stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=10)
-
             return {
                 "installed": True,
                 "returncode": proc.returncode,
@@ -29,67 +34,9 @@ class DabService:
                 "cmd": cmd,
             }
         except FileNotFoundError:
-            return {
-                "installed": False,
-                "returncode": None,
-                "stdout": "",
-                "stderr": "welle-cli not found",
-                "cmd": cmd,
-            }
+            return {"installed": False, "returncode": None, "stdout": "", "stderr": "welle-cli not found", "cmd": cmd}
         except Exception as exc:
-            return {
-                "installed": False,
-                "returncode": None,
-                "stdout": "",
-                "stderr": str(exc),
-                "cmd": cmd,
-            }
-
-    async def scan(self, block: str):
-        block = block.upper()
-        cmd = ["welle-cli", "-c", block, "-D"]
-
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=25)
-
-            return {
-                "block": block,
-                "returncode": proc.returncode,
-                "stdout": stdout.decode(errors="replace"),
-                "stderr": stderr.decode(errors="replace"),
-                "cmd": cmd,
-            }
-        except FileNotFoundError:
-            return {
-                "block": block,
-                "returncode": None,
-                "stdout": "",
-                "stderr": "welle-cli not found",
-                "cmd": cmd,
-            }
-        except asyncio.TimeoutError:
-            with suppress(Exception):
-                proc.kill()
-            return {
-                "block": block,
-                "returncode": None,
-                "stdout": "",
-                "stderr": "scan timeout",
-                "cmd": cmd,
-            }
-        except Exception as exc:
-            return {
-                "block": block,
-                "returncode": None,
-                "stdout": "",
-                "stderr": str(exc),
-                "cmd": cmd,
-            }
+            return {"installed": False, "returncode": None, "stdout": "", "stderr": str(exc), "cmd": cmd}
 
     async def stop(self):
         if self._proc and self._proc.returncode is None:
@@ -103,7 +50,6 @@ class DabService:
         self._proc = None
         self._block = None
         self._port = None
-
         return {"running": False}
 
     async def start_web(self, block: str, port: int = 7979):
@@ -165,25 +111,19 @@ class DabService:
             "warning": "web server started but mux.json not reachable yet",
         }
 
-    async def status(self):
-        running = self._proc is not None and self._proc.returncode is None
-        return {
-            "running": running,
-            "block": self._block,
-            "port": self._port,
-            "mux_url": f"http://127.0.0.1:{self._port}/mux.json" if self._port else None,
-            "base_url": f"http://127.0.0.1:{self._port}" if self._port else None,
-        }
+    async def ensure_block_running(self, block: str, port: int = 7979):
+        async with radio_state.radio_lock:
+            if radio_state.fm_service is not None:
+                await radio_state.fm_service.stop()
+            result = await self.start_web(block, port)
+            radio_state.active_mode = "dab"
+            return result
 
     async def mux(self):
         if not self._port:
-            return {
-                "running": False,
-                "error": "web server not started",
-            }
+            return {"running": False, "error": "web server not started"}
 
         url = f"http://127.0.0.1:{self._port}/mux.json"
-
         async with aiohttp.ClientSession() as session:
             async with session.get(url, timeout=5) as resp:
                 text = await resp.text()
@@ -202,9 +142,66 @@ class DabService:
                     "raw": text,
                 }
 
-    async def proxy_stream(self, sid: str):
-        if not self._port:
-            raise RuntimeError("web server not started")
+    async def scan_and_store(self, block: str):
+        block = block.upper()
+        await self.ensure_block_running(block, 7979)
+        mux_data = await self.mux()
+        payload = mux_data.get("json") or {}
+        ensemble = ((payload.get("ensemble") or {}).get("label") or {}).get("label")
+        services = payload.get("services") or []
+
+        stations = []
+        for svc in services:
+            sid = svc.get("sid")
+            label = ((svc.get("label") or {}).get("label")) or sid
+            shortlabel = ((svc.get("label") or {}).get("shortlabel")) or label
+            pty = svc.get("ptystring")
+            subchannels = svc.get("subchannels") or []
+            bitrate = None
+            if subchannels and isinstance(subchannels[0], dict):
+                bitrate = subchannels[0].get("bitrate")
+
+            if sid:
+                stations.append({
+                    "id": f"dab:{block}:{sid}",
+                    "type": "dab",
+                    "name": label,
+                    "short_name": shortlabel,
+                    "sid": sid,
+                    "block": block,
+                    "ensemble": ensemble,
+                    "genre": pty,
+                    "bitrate": bitrate,
+                    "stream_path": f"/stream/dab/dab:{block}:{sid}",
+                    "last_seen": self._utcnow(),
+                })
+
+        if radio_state.storage_service is None:
+            raise RuntimeError("storage service not configured")
+
+        await radio_state.storage_service.upsert_dab_stations(stations)
+
+        return {
+            "running": True,
+            "block": block,
+            "ensemble": ensemble,
+            "count": len(stations),
+            "stations": stations,
+        }
+
+    async def proxy_stream_by_station_id(self, station_id: str):
+        if radio_state.storage_service is None:
+            raise RuntimeError("storage service not configured")
+
+        station = await radio_state.storage_service.get_station(station_id)
+        if not station:
+            raise RuntimeError(f"station not found: {station_id}")
+        if station.get("type") != "dab":
+            raise RuntimeError(f"station is not dab: {station_id}")
+
+        block = station.get("block") or self._default_block
+        sid = station.get("sid")
+        await self.ensure_block_running(block, 7979)
 
         url = f"http://127.0.0.1:{self._port}/mp3/{sid}"
 
@@ -216,7 +213,6 @@ class DabService:
                 if resp.status != 200:
                     body = await resp.text()
                     raise RuntimeError(f"upstream stream failed: {resp.status} body={body[:300]}")
-
                 async for chunk in resp.content.iter_chunked(4096):
                     if chunk:
                         yield chunk
