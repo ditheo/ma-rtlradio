@@ -1,5 +1,4 @@
 import asyncio
-from contextlib import suppress
 from datetime import datetime, timezone
 
 import aiohttp
@@ -34,9 +33,21 @@ class DabService:
                 "cmd": cmd,
             }
         except FileNotFoundError:
-            return {"installed": False, "returncode": None, "stdout": "", "stderr": "welle-cli not found", "cmd": cmd}
+            return {
+                "installed": False,
+                "returncode": None,
+                "stdout": "",
+                "stderr": "welle-cli not found",
+                "cmd": cmd,
+            }
         except Exception as exc:
-            return {"installed": False, "returncode": None, "stdout": "", "stderr": str(exc), "cmd": cmd}
+            return {
+                "installed": False,
+                "returncode": None,
+                "stdout": "",
+                "stderr": str(exc),
+                "cmd": cmd,
+            }
 
     async def stop(self):
         if self._proc and self._proc.returncode is None:
@@ -199,11 +210,11 @@ class DabService:
         if station.get("type") != "dab":
             raise RuntimeError(f"station is not dab: {station_id}")
 
-        block = station.get("block") or self._default_block
+        block = (station.get("block") or self._default_block).upper()
         sid = station.get("sid")
         await self.ensure_block_running(block, 7979)
 
-        url = f"http://127.0.0.1:{self._port}/mp3/{sid}"
+        url = f"http://127.0.0.1:{self._port}/mp3/{block}/{sid}"
 
         async def generator():
             session = aiohttp.ClientSession()
@@ -212,7 +223,7 @@ class DabService:
                 resp = await session.get(url, timeout=None)
                 if resp.status != 200:
                     body = await resp.text()
-                    raise RuntimeError(f"upstream stream failed: {resp.status} body={body[:300]}")
+                    raise RuntimeError(f"upstream stream failed: {resp.status} url={url} body={body[:300]}")
                 async for chunk in resp.content.iter_chunked(4096):
                     if chunk:
                         yield chunk
