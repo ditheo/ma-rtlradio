@@ -25,6 +25,7 @@ class StorageService:
         directory = os.path.dirname(self.path)
         if directory:
             os.makedirs(directory, exist_ok=True)
+
         if not os.path.exists(self.path):
             async with self._lock:
                 if not os.path.exists(self.path):
@@ -36,6 +37,7 @@ class StorageService:
         async with self._lock:
             with open(self.path, "r", encoding="utf-8") as f:
                 data = json.load(f)
+
         data.setdefault("schema_version", 1)
         data.setdefault("updated_at", self._utcnow())
         data.setdefault("dab", [])
@@ -46,9 +48,11 @@ class StorageService:
         await self._ensure_file()
         payload = deepcopy(data)
         payload["updated_at"] = self._utcnow()
+
         async with self._lock:
             with open(self.path, "w", encoding="utf-8") as f:
                 json.dump(payload, f, ensure_ascii=False, indent=2)
+
         return payload
 
     async def get_all_stations(self) -> dict:
@@ -65,8 +69,8 @@ class StorageService:
     async def upsert_dab_stations(self, stations: list) -> dict:
         data = await self.read()
         current = data.get("dab", [])
-
         by_id = {item["id"]: item for item in current if "id" in item}
+
         for station in stations:
             by_id[station["id"]] = station
 
@@ -82,14 +86,15 @@ class StorageService:
 
     async def add_fm_station(self, name: str, frequency: float) -> dict:
         data = await self.read()
-        station_id = f"fm:{frequency:.1f}"
+        freq = round(float(frequency), 1)
+        station_id = f"fm:{freq:.1f}"
 
         station = {
             "id": station_id,
             "type": "fm",
             "name": name,
-            "frequency": round(float(frequency), 1),
-            "stream_path": f"/stream/fm/{round(float(frequency), 1)}",
+            "frequency": freq,
+            "stream_path": f"/stream/fm/{freq}",
             "last_seen": self._utcnow(),
         }
 
