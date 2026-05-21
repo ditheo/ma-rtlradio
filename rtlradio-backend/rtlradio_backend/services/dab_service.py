@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 import aiohttp
 
@@ -167,6 +168,7 @@ class DabService:
             label = ((svc.get("label") or {}).get("label")) or sid
             shortlabel = ((svc.get("label") or {}).get("shortlabel")) or label
             pty = svc.get("ptystring")
+            url_mp3 = svc.get("url_mp3")
             subchannels = svc.get("subchannels") or []
             bitrate = None
             if subchannels and isinstance(subchannels[0], dict):
@@ -183,6 +185,7 @@ class DabService:
                     "ensemble": ensemble,
                     "genre": pty,
                     "bitrate": bitrate,
+                    "url_mp3": url_mp3,
                     "stream_path": f"/dab/play/dab:{block}:{sid}",
                     "last_seen": self._utcnow(),
                 })
@@ -211,19 +214,30 @@ class DabService:
             raise RuntimeError(f"station is not dab: {station_id}")
 
         block = (station.get("block") or self._default_block).upper()
-        sid = station.get("sid")
         await self.ensure_block_running(block, 7979)
 
-        url = f"http://127.0.0.1:{self._port}/mp3/{block}/{sid}"
+        url_mp3 = station.get("url_mp3")
+        if not url_mp3:
+            raise RuntimeError(f"station has no url_mp3: {station_id}")
+
+        parsed = urlparse(url_mp3)
+        if parsed.path:
+            upstream_url = f"http://127.0.0.1:{self._port}{parsed.path}"
+            if parsed.query:
+                upstream_url += f"?{parsed.query}"
+        else:
+            raise RuntimeError(f"invalid url_mp3 for station {station_id}: {url_mp3}")
 
         async def generator():
             session = aiohttp.ClientSession()
             resp = None
             try:
-                resp = await session.get(url, timeout=None)
+                resp = await session.get(upstream_url, timeout=None)
                 if resp.status != 200:
                     body = await resp.text()
-                    raise RuntimeError(f"upstream stream failed: {resp.status} url={url} body={body[:300]}")
+                    raise RuntimeError(
+                        f"upstream stream failed: {resp.status} url={upstream_url} body={body[:300]}"
+                    )
                 async for chunk in resp.content.iter_chunked(4096):
                     if chunk:
                         yield chunk
