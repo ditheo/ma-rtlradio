@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
 from ..services.dab_service import DabService
 from ..services import radio_state
@@ -16,31 +16,10 @@ async def dab_info():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.get("/scan/{block}")
+@router.post("/scan/{block}")
 async def scan_block(block: str):
     try:
-        return await _svc.scan(block)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router.post("/start/{block}")
-async def start_block(block: str, port: int = Query(default=7979, ge=1025, le=65535)):
-    try:
-        async with radio_state.radio_lock:
-            if radio_state.fm_service is not None:
-                await radio_state.fm_service.stop()
-            result = await _svc.start_web(block, port)
-            radio_state.active_mode = "dab"
-            return result
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router.post("/stop")
-async def stop_dab():
-    try:
-        return await _svc.stop()
+        return await _svc.scan_and_store(block)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -48,7 +27,11 @@ async def stop_dab():
 @router.get("/status")
 async def dab_status():
     try:
-        return await _svc.status()
+        return {
+            "running": _svc._proc is not None and _svc._proc.returncode is None,
+            "block": _svc._block,
+            "port": _svc._port,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -61,46 +44,10 @@ async def dab_mux():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.get("/programmes")
-async def dab_programmes():
+@router.get("/play/{station_id:path}")
+async def dab_play(station_id: str):
     try:
-        data = await _svc.mux()
-        payload = data.get("json") or {}
-        services = payload.get("services") or []
-
-        programmes = []
-        for svc in services:
-            sid = svc.get("sid")
-            label = ((svc.get("label") or {}).get("label")) or sid
-            shortlabel = ((svc.get("label") or {}).get("shortlabel")) or label
-            pty = svc.get("ptystring")
-            url_mp3 = svc.get("url_mp3")
-
-            if sid and url_mp3:
-                programmes.append({
-                    "name": label,
-                    "short_name": shortlabel,
-                    "sid": sid,
-                    "type": pty,
-                    "stream_path": f"/dab/play/{sid}",
-                    "stream_url": f"/dab/play/{sid}",
-                })
-
-        return {
-            "running": data.get("running", False),
-            "block": data.get("block"),
-            "port": data.get("port"),
-            "ensemble": ((payload.get("ensemble") or {}).get("label") or {}).get("label"),
-            "programmes": programmes,
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-
-@router.get("/play/{sid}")
-async def dab_play(sid: str):
-    try:
-        stream = await _svc.proxy_stream(sid)
+        stream = await _svc.proxy_stream_by_station_id(station_id)
         return StreamingResponse(
             stream,
             media_type="audio/mpeg",
@@ -110,4 +57,4 @@ async def dab_play(sid: str):
             },
         )
     except Exception as exc:
-        return JSONResponse(status_code=500, content={"error": str(exc), "sid": sid})
+        return JSONResponse(status_code=500, content={"error": str(exc), "station_id": station_id})
