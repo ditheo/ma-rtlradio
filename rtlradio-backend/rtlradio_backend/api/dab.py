@@ -46,30 +46,6 @@ async def dab_mux():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.get("/play/{station_id:path}")
-async def dab_play(station_id: str):
-    try:
-        stream = await _svc.proxy_stream_by_station_id(station_id)
-        return StreamingResponse(
-            stream,
-            media_type="audio/mpeg",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Content-Type-Options": "nosniff",
-                "X-Station-Id": station_id,
-            },
-        )
-    except Exception as exc:
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": str(exc),
-                "station_id": station_id,
-                "traceback": traceback.format_exc(),
-            },
-        )
-
-
 @router.get("/play-by-name/{name:path}")
 async def dab_play_by_name(name: str):
     try:
@@ -155,13 +131,47 @@ async def dab_play_by_name(name: str):
                 },
             )
 
-        return await dab_play(station_id)
+        stream = await _svc.proxy_stream_by_station_id(station_id)
+        return StreamingResponse(
+            stream,
+            media_type="audio/mpeg",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+                "X-Station-Id": station_id,
+                "X-Station-Name": exact_playable.get("name") or "",
+            },
+        )
     except Exception as exc:
         return JSONResponse(
             status_code=500,
             content={
                 "error": str(exc),
                 "name": name,
+                "traceback": traceback.format_exc(),
+            },
+        )
+
+
+@router.get("/play/{station_id:path}")
+async def dab_play(station_id: str):
+    try:
+        stream = await _svc.proxy_stream_by_station_id(station_id)
+        return StreamingResponse(
+            stream,
+            media_type="audio/mpeg",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+                "X-Station-Id": station_id,
+            },
+        )
+    except Exception as exc:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": str(exc),
+                "station_id": station_id,
                 "traceback": traceback.format_exc(),
             },
         )
