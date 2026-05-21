@@ -10,6 +10,55 @@ _svc = DabService()
 radio_state.dab_service = _svc
 
 
+def _station_to_plain_dict(st):
+    if isinstance(st, dict):
+        return dict(st)
+
+    if hasattr(st, "keys"):
+        try:
+            return {key: st[key] for key in st.keys()}
+        except Exception:
+            pass
+
+    if hasattr(st, "_mapping"):
+        try:
+            return dict(st._mapping)
+        except Exception:
+            pass
+
+    if hasattr(st, "__dict__"):
+        try:
+            data = {}
+            for key, value in vars(st).items():
+                if not key.startswith("_"):
+                    data[key] = value
+            if data:
+                return data
+        except Exception:
+            pass
+
+    try:
+        return dict(st)
+    except Exception:
+        return {"value": str(st)}
+
+
+def _safe_station_summary(station):
+    return {
+        "id": str(station.get("id") or ""),
+        "type": str(station.get("type") or ""),
+        "name": str(station.get("name") or ""),
+        "short_name": str(station.get("short_name") or ""),
+        "sid": str(station.get("sid") or ""),
+        "block": str(station.get("block") or ""),
+        "ensemble": str(station.get("ensemble") or ""),
+        "genre": str(station.get("genre") or ""),
+        "url_mp3": station.get("url_mp3"),
+        "stream_path": str(station.get("stream_path") or ""),
+        "last_seen": str(station.get("last_seen") or ""),
+    }
+
+
 @router.get("/info")
 async def dab_info():
     try:
@@ -52,16 +101,17 @@ async def dab_resolve_by_name(name: str):
         if radio_state.storage_service is None:
             raise RuntimeError("storage service not configured")
 
-        stations = await radio_state.storage_service.list_stations("dab")
-        wanted = name.strip().casefold()
+        raw_stations = await radio_state.storage_service.list_stations("dab")
+        stations = [_station_to_plain_dict(st) for st in raw_stations]
 
+        wanted = name.strip().casefold()
         exact_playable = None
         exact_unplayable = None
         partial_playable = []
 
         for st in stations:
-            station_name = (st.get("name") or "").strip()
-            short_name = (st.get("short_name") or "").strip()
+            station_name = str(st.get("name") or "").strip()
+            short_name = str(st.get("short_name") or "").strip()
             has_stream = bool(st.get("url_mp3"))
 
             exact_match = (
@@ -79,33 +129,11 @@ async def dab_resolve_by_name(name: str):
                 break
 
             if exact_match and not has_stream and exact_unplayable is None:
-                exact_unplayable = {
-                    "id": st.get("id"),
-                    "type": st.get("type"),
-                    "name": st.get("name"),
-                    "short_name": st.get("short_name"),
-                    "sid": st.get("sid"),
-                    "block": st.get("block"),
-                    "ensemble": st.get("ensemble"),
-                    "url_mp3": st.get("url_mp3"),
-                    "stream_path": st.get("stream_path"),
-                    "last_seen": st.get("last_seen"),
-                    "error": "station exists but is not playable",
-                }
+                exact_unplayable = _safe_station_summary(st)
+                exact_unplayable["error"] = "station exists but is not playable"
 
             if partial_match and has_stream:
-                partial_playable.append({
-                    "id": st.get("id"),
-                    "type": st.get("type"),
-                    "name": st.get("name"),
-                    "short_name": st.get("short_name"),
-                    "sid": st.get("sid"),
-                    "block": st.get("block"),
-                    "ensemble": st.get("ensemble"),
-                    "url_mp3": st.get("url_mp3"),
-                    "stream_path": st.get("stream_path"),
-                    "last_seen": st.get("last_seen"),
-                })
+                partial_playable.append(_safe_station_summary(st))
 
         if exact_playable is None:
             if exact_unplayable is not None:
@@ -130,30 +158,31 @@ async def dab_resolve_by_name(name: str):
                 }),
             )
 
-        station_id = exact_playable.get("id")
+        station_id = str(exact_playable.get("id") or "")
         if not station_id:
             return JSONResponse(
                 status_code=500,
                 content=jsonable_encoder({
                     "error": f"matched station has no id: {name}",
-                    "match": exact_playable,
                 }),
             )
+
+        stream_path = str(exact_playable.get("stream_path") or f"/dab/play/{station_id}")
 
         payload = {
             "ok": True,
             "query": name,
-            "resolved_name": exact_playable.get("name"),
+            "resolved_name": str(exact_playable.get("name") or ""),
             "station_id": station_id,
-            "sid": exact_playable.get("sid"),
-            "block": exact_playable.get("block"),
-            "ensemble": exact_playable.get("ensemble"),
-            "genre": exact_playable.get("genre"),
+            "sid": str(exact_playable.get("sid") or ""),
+            "block": str(exact_playable.get("block") or ""),
+            "ensemble": str(exact_playable.get("ensemble") or ""),
+            "genre": str(exact_playable.get("genre") or ""),
             "url_mp3": exact_playable.get("url_mp3"),
-            "stream_path": exact_playable.get("stream_path") or f"/dab/play/{station_id}",
-            "play_url": exact_playable.get("stream_path") or f"/dab/play/{station_id}",
-            "last_seen": exact_playable.get("last_seen"),
+            "stream_path": stream_path,
+            "play_url": stream_path,
         }
+
         return JSONResponse(status_code=200, content=jsonable_encoder(payload))
     except Exception as exc:
         return JSONResponse(
