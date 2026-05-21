@@ -3,284 +3,329 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RTL Radio Favorites Admin</title>
+  <title>RTL Radio Admin</title>
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
   <style>
     :root, [data-theme="light"] {
-      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
-      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
-      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
-      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
-      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem;
-      --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
-      --space-12: 3rem; --space-16: 4rem;
-      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9;
-      --color-border: #d4d1ca; --color-text: #28251d; --color-text-muted: #7a7974;
-      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8;
-      --color-success: #437a22; --color-error: #a12c7b; --radius-md: 0.5rem; --radius-lg: 0.75rem;
-      --shadow-sm: 0 1px 2px oklch(0.2 0.01 80 / 0.06); --shadow-md: 0 4px 12px oklch(0.2 0.01 80 / 0.08);
-      --font-body: 'Satoshi', 'Inter', sans-serif;
+      --bg:#f7f6f2; --surface:#f9f8f5; --surface2:#fbfbf9; --border:#d4d1ca;
+      --text:#28251d; --muted:#7a7974; --primary:#01696f; --primary2:#cedcd8;
+      --ok:#437a22; --err:#a12c7b; --radius:14px; --shadow:0 4px 12px rgba(0,0,0,.08);
     }
     [data-theme="dark"] {
-      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d;
-      --color-border: #393836; --color-text: #cdccca; --color-text-muted: #797876;
-      --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b;
-      --color-success: #6daa45; --color-error: #d163a7;
-      --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2); --shadow-md: 0 4px 12px oklch(0 0 0 / 0.3);
+      --bg:#171614; --surface:#1c1b19; --surface2:#201f1d; --border:#393836;
+      --text:#cdccca; --muted:#797876; --primary:#4f98a3; --primary2:#313b3b;
+      --ok:#6daa45; --err:#d163a7; --shadow:0 4px 12px rgba(0,0,0,.28);
     }
-    *,*::before,*::after{box-sizing:border-box} html,body{margin:0;padding:0} body{font-family:var(--font-body);font-size:var(--text-base);line-height:1.5;background:var(--color-bg);color:var(--color-text)}
-    button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
-    .shell{max-width:1100px;margin:0 auto;padding:var(--space-6)}
-    .topbar{display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);margin-bottom:var(--space-6)}
-    .brand{display:flex;align-items:center;gap:var(--space-3)}
-    .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--color-primary),var(--color-primary-highlight));box-shadow:var(--shadow-sm)}
-    .grid{display:grid;grid-template-columns:1.05fr 0.95fr;gap:var(--space-6)}
-    .card{background:var(--color-surface);border:1px solid color-mix(in oklab, var(--color-text) 12%, transparent);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:var(--space-5)}
-    .card h2{font-size:var(--text-lg);margin:0 0 var(--space-4)}
-    .muted{color:var(--color-text-muted)}
-    .stack{display:grid;gap:var(--space-4)}
-    .field{display:grid;gap:var(--space-2)}
-    .label{font-size:var(--text-sm);font-weight:700}
-    input,select,textarea{width:100%;padding:0.9rem 1rem;border-radius:var(--radius-md);border:1px solid var(--color-border);background:var(--color-surface-2)}
-    textarea{min-height:140px;resize:vertical}
-    .actions{display:flex;flex-wrap:wrap;gap:var(--space-3)}
-    .btn{border:0;padding:0.9rem 1.1rem;border-radius:var(--radius-md);font-size:var(--text-sm);font-weight:700}
-    .btn-primary{background:var(--color-primary);color:white}.btn-primary:hover{background:var(--color-primary-hover)}
-    .btn-secondary{background:var(--color-primary-highlight);color:var(--color-text)}
-    .pill{display:inline-flex;align-items:center;gap:0.4rem;padding:0.45rem 0.7rem;border-radius:999px;background:var(--color-surface-2);border:1px solid var(--color-border);font-size:var(--text-xs)}
-    .status{padding:0.85rem 1rem;border-radius:var(--radius-md);font-size:var(--text-sm);display:none}
-    .status.show{display:block}.status.ok{background:color-mix(in oklab, var(--color-success) 14%, var(--color-surface));color:var(--color-text)}
-    .status.err{background:color-mix(in oklab, var(--color-error) 14%, var(--color-surface));color:var(--color-text)}
-    .list{display:grid;gap:var(--space-3)}
-    .item{display:grid;gap:0.25rem;padding:var(--space-4);border-radius:var(--radius-md);background:var(--color-surface-2);border:1px solid color-mix(in oklab, var(--color-text) 10%, transparent)}
-    .item-top{display:flex;justify-content:space-between;gap:var(--space-3);align-items:center}
-    .item-name{font-weight:700}
-    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:var(--text-xs)}
-    @media (max-width: 860px){.grid{grid-template-columns:1fr}.shell{padding:var(--space-4)}}
+    *{box-sizing:border-box} body{margin:0;font-family:'Satoshi',sans-serif;background:var(--bg);color:var(--text)}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
+    .logo{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary2))}
+    .title{font-size:32px;font-weight:700;line-height:1.05}.muted{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .card h2{margin:0 0 14px;font-size:22px}
+    .field{display:grid;gap:8px;margin-bottom:14px}
+    label{font-size:14px;font-weight:700}
+    input,select,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit}
+    textarea{min-height:130px;resize:vertical}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    button{border:0;border-radius:10px;padding:12px 14px;font-weight:700;cursor:pointer}
+    .primary{background:var(--primary);color:#fff}.secondary{background:var(--primary2);color:var(--text)}
+    .status{display:none;padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:18px}
+    .status.show{display:block}.status.ok{background:color-mix(in oklab, var(--ok) 14%, var(--surface));}.status.err{background:color-mix(in oklab, var(--err) 14%, var(--surface));}
+    .list{display:grid;gap:10px}.item{padding:12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+    .item strong{display:block}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+    @media (max-width:900px){.grid{grid-template-columns:1fr}.title{font-size:26px}}
   </style>
 </head>
 <body>
-  <div class="shell">
-    <div class="topbar">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div>
-          <div style="font-size:var(--text-xl);font-weight:700;line-height:1.1">Radio favorites admin</div>
-          <div class="muted">Φτιάχνεις favorite aliases και τα στέλνεις με HTTP POST.</div>
-        </div>
+<div class="wrap">
+  <div class="top">
+    <div class="logo">
+      <div class="mark"></div>
+      <div>
+        <div class="title">RTL Radio Admin</div>
+        <div class="muted">FM catalog, DAB stations και favorites από μία σελίδα.</div>
       </div>
-      <button class="btn btn-secondary" id="themeBtn" type="button">Dark mode</button>
     </div>
-
-    <div class="grid">
-      <section class="card stack">
-        <h2>Backend</h2>
-        <div class="field">
-          <label class="label" for="baseUrl">Base URL</label>
-          <input id="baseUrl" value="http://10.100.0.249:7070" />
-        </div>
-        <div class="actions">
-          <button class="btn btn-secondary" id="loadStationsBtn" type="button">Load stations</button>
-          <button class="btn btn-secondary" id="loadFavoritesBtn" type="button">Load favorites</button>
-        </div>
-        <div class="status" id="statusBox"></div>
-      </section>
-
-      <section class="card stack">
-        <h2>Create favorite</h2>
-        <div class="field">
-          <label class="label" for="alias">Alias</label>
-          <input id="alias" placeholder="π.χ. Voice" />
-        </div>
-        <div class="field">
-          <label class="label" for="stationSelect">Station</label>
-          <select id="stationSelect">
-            <option value="">Διάλεξε station_id</option>
-          </select>
-        </div>
-        <div class="field">
-          <label class="label" for="stationId">station_id</label>
-          <input id="stationId" placeholder="π.χ. dab:5A:0x1005 ή fm:95.5" />
-        </div>
-        <div class="field">
-          <label class="label" for="jsonBody">JSON body</label>
-          <textarea id="jsonBody">{
-  "alias": "Voice",
-  "station_id": "dab:5A:0x1005"
-}</textarea>
-        </div>
-        <div class="actions">
-          <button class="btn btn-primary" id="postBtn" type="button">POST /favorites</button>
-          <button class="btn btn-secondary" id="syncJsonBtn" type="button">Sync JSON</button>
-        </div>
-      </section>
-    </div>
-
-    <div class="grid" style="margin-top:2rem">
-      <section class="card stack">
-        <h2>Stations</h2>
-        <div class="list" id="stationsList"></div>
-      </section>
-      <section class="card stack">
-        <h2>Favorites</h2>
-        <div class="list" id="favoritesList"></div>
-      </section>
-    </div>
+    <button class="secondary" id="themeBtn" type="button">Dark mode</button>
   </div>
 
-  <script>
-    const state = { stations: [], favorites: [] };
-    const $ = (id) => document.getElementById(id);
-    const statusBox = $('statusBox');
+  <div id="status" class="status"></div>
 
-    function setStatus(message, ok = true) {
-      statusBox.className = 'status show ' + (ok ? 'ok' : 'err');
-      statusBox.textContent = message;
-    }
+  <div class="grid">
+    <section class="card">
+      <h2>Backend</h2>
+      <div class="field">
+        <label for="baseUrl">Base URL</label>
+        <input id="baseUrl" value="" placeholder="π.χ. http://10.100.0.249:7070">
+      </div>
+      <div class="row">
+        <button class="secondary" id="loadStationsBtn" type="button">Load stations</button>
+        <button class="secondary" id="loadFavoritesBtn" type="button">Load favorites</button>
+      </div>
+    </section>
 
-    function baseUrl() {
-      return $('baseUrl').value.trim().replace(/\/$/, '');
-    }
+    <section class="card">
+      <h2>Add FM station</h2>
+      <div class="field">
+        <label for="fmName">FM name</label>
+        <input id="fmName" placeholder="π.χ. Best Radio">
+      </div>
+      <div class="field">
+        <label for="fmFreq">Frequency</label>
+        <input id="fmFreq" type="number" step="0.1" placeholder="π.χ. 105.8">
+      </div>
+      <div class="row">
+        <button class="primary" id="addFmBtn" type="button">POST /stations/fm</button>
+      </div>
+    </section>
+  </div>
 
-    function syncJsonFromFields() {
-      const payload = {
-        alias: $('alias').value.trim(),
-        station_id: $('stationId').value.trim()
-      };
-      $('jsonBody').value = JSON.stringify(payload, null, 2);
-    }
+  <div class="grid" style="margin-top:20px">
+    <section class="card">
+      <h2>Create favorite</h2>
+      <div class="field">
+        <label for="alias">Alias</label>
+        <input id="alias" placeholder="π.χ. Voice / Best FM / News">
+      </div>
+      <div class="field">
+        <label for="stationSelect">Station</label>
+        <select id="stationSelect">
+          <option value="">Διάλεξε station_id</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="stationId">station_id</label>
+        <input id="stationId" placeholder="π.χ. dab:5A:0x1005 ή fm:105.8">
+      </div>
+      <div class="field">
+        <label for="jsonBody">JSON body</label>
+        <textarea id="jsonBody">{
+  "alias": "",
+  "station_id": ""
+}</textarea>
+      </div>
+      <div class="row">
+        <button class="primary" id="postFavoriteBtn" type="button">POST /favorites</button>
+        <button class="secondary" id="syncJsonBtn" type="button">Sync JSON</button>
+      </div>
+    </section>
 
-    function renderStations() {
-      const wrap = $('stationsList');
-      wrap.innerHTML = '';
-      if (!state.stations.length) {
-        wrap.innerHTML = '<div class="muted">Δεν έχουν φορτωθεί stations.</div>';
-        return;
-      }
-      state.stations.forEach(st => {
-        const el = document.createElement('div');
-        el.className = 'item';
-        el.innerHTML = `
-          <div class="item-top">
-            <div class="item-name">${escapeHtml(st.name || st.id)}</div>
-            <span class="pill">${escapeHtml(st.type || '')}</span>
-          </div>
-          <div class="mono">${escapeHtml(st.id || '')}</div>
-          <div class="muted">${escapeHtml(st.stream_path || '')}</div>
-        `;
-        el.addEventListener('click', () => {
-          $('stationId').value = st.id || '';
-          if (!$('alias').value.trim()) $('alias').value = st.name || '';
-          syncJsonFromFields();
-        });
-        wrap.appendChild(el);
-      });
-    }
+    <section class="card">
+      <h2>DAB scan</h2>
+      <div class="field">
+        <label for="dabBlock">Block</label>
+        <input id="dabBlock" value="5A" placeholder="π.χ. 5A">
+      </div>
+      <div class="row">
+        <button class="primary" id="scanDabBtn" type="button">POST /dab/scan/{block}</button>
+      </div>
+    </section>
+  </div>
 
-    function renderFavorites() {
-      const wrap = $('favoritesList');
-      wrap.innerHTML = '';
-      if (!state.favorites.length) {
-        wrap.innerHTML = '<div class="muted">Δεν υπάρχουν favorites ακόμα.</div>';
-        return;
-      }
-      state.favorites.forEach(f => {
-        const el = document.createElement('div');
-        el.className = 'item';
-        el.innerHTML = `
-          <div class="item-top">
-            <div class="item-name">${escapeHtml(f.alias || '')}</div>
-            <span class="pill">${escapeHtml(f.station_type || '')}</span>
-          </div>
-          <div class="mono">${escapeHtml(f.station_id || '')}</div>
-          <div class="muted">${escapeHtml(f.target_path || '')}</div>
-        `;
-        wrap.appendChild(el);
-      });
-    }
+  <div class="grid" style="margin-top:20px">
+    <section class="card">
+      <h2>Stations</h2>
+      <div id="stationsList" class="list"></div>
+    </section>
 
-    function fillStationSelect() {
-      const select = $('stationSelect');
-      select.innerHTML = '<option value="">Διάλεξε station_id</option>';
-      state.stations.forEach(st => {
-        const opt = document.createElement('option');
-        opt.value = st.id || '';
-        opt.textContent = `${st.name || st.id} — ${st.id || ''}`;
-        select.appendChild(opt);
-      });
-    }
+    <section class="card">
+      <h2>Favorites</h2>
+      <div id="favoritesList" class="list"></div>
+    </section>
+  </div>
+</div>
 
-    async function loadStations() {
-      const res = await fetch(baseUrl() + '/stations');
-      const data = await res.json();
-      state.stations = [...(data.dab || []), ...(data.fm || [])];
-      renderStations();
-      fillStationSelect();
-      setStatus(`Loaded ${state.stations.length} stations.`);
-    }
+<script>
+const state = { stations: [], favorites: [] };
+const $ = (id) => document.getElementById(id);
 
-    async function loadFavorites() {
-      const res = await fetch(baseUrl() + '/favorites');
-      const data = await res.json();
-      state.favorites = data.items || [];
-      renderFavorites();
-      setStatus(`Loaded ${state.favorites.length} favorites.`);
-    }
+function getBaseUrl() {
+  const raw = $('baseUrl').value.trim();
+  if (raw) return raw.replace(/\/$/, '');
+  return window.location.origin;
+}
 
-    async function postFavorite() {
-      let payload;
-      try {
-        payload = JSON.parse($('jsonBody').value);
-      } catch (err) {
-        setStatus('Το JSON δεν είναι έγκυρο.', false);
-        return;
-      }
+function showStatus(message, ok = true) {
+  const el = $('status');
+  el.className = 'status show ' + (ok ? 'ok' : 'err');
+  el.textContent = message;
+}
 
-      const res = await fetch(baseUrl() + '/favorites', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
 
-      const text = await res.text();
-      if (!res.ok) {
-        setStatus(`POST failed: ${res.status} ${text}`, false);
-        return;
-      }
+function syncJson() {
+  const payload = {
+    alias: $('alias').value.trim(),
+    station_id: $('stationId').value.trim()
+  };
+  $('jsonBody').value = JSON.stringify(payload, null, 2);
+}
 
-      setStatus(`Favorite αποθηκεύτηκε: ${text}`);
-      await loadFavorites();
-    }
+function renderStations() {
+  const wrap = $('stationsList');
+  wrap.innerHTML = '';
+  if (!state.stations.length) {
+    wrap.innerHTML = '<div class="muted">Δεν υπάρχουν stations ακόμα.</div>';
+    return;
+  }
 
-    function escapeHtml(value) {
-      return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-    }
-
-    $('syncJsonBtn').addEventListener('click', syncJsonFromFields);
-    $('postBtn').addEventListener('click', postFavorite);
-    $('loadStationsBtn').addEventListener('click', loadStations);
-    $('loadFavoritesBtn').addEventListener('click', loadFavorites);
-    $('stationSelect').addEventListener('change', (e) => {
-      $('stationId').value = e.target.value;
-      syncJsonFromFields();
+  state.stations.forEach((st) => {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <strong>${escapeHtml(st.name || st.id)}</strong>
+      <div class="mono">${escapeHtml(st.id || '')}</div>
+      <div class="muted">${escapeHtml(st.stream_path || '')}</div>
+    `;
+    el.addEventListener('click', () => {
+      $('stationId').value = st.id || '';
+      if (!$('alias').value.trim()) $('alias').value = st.name || '';
+      syncJson();
     });
-    $('alias').addEventListener('input', syncJsonFromFields);
-    $('stationId').addEventListener('input', syncJsonFromFields);
-    $('themeBtn').addEventListener('click', () => {
-      const root = document.documentElement;
-      const dark = root.getAttribute('data-theme') === 'dark';
-      root.setAttribute('data-theme', dark ? 'light' : 'dark');
-      $('themeBtn').textContent = dark ? 'Dark mode' : 'Light mode';
-    });
+    wrap.appendChild(el);
+  });
 
-    loadStations().catch(err => setStatus('Load stations failed: ' + err.message, false));
-    loadFavorites().catch(err => setStatus('Load favorites failed: ' + err.message, false));
-  </script>
+  const select = $('stationSelect');
+  select.innerHTML = '<option value="">Διάλεξε station_id</option>';
+  state.stations.forEach((st) => {
+    const opt = document.createElement('option');
+    opt.value = st.id || '';
+    opt.textContent = `${st.name || st.id} — ${st.id || ''}`;
+    select.appendChild(opt);
+  });
+}
+
+function renderFavorites() {
+  const wrap = $('favoritesList');
+  wrap.innerHTML = '';
+  if (!state.favorites.length) {
+    wrap.innerHTML = '<div class="muted">Δεν υπάρχουν favorites ακόμα.</div>';
+    return;
+  }
+
+  state.favorites.forEach((fav) => {
+    const el = document.createElement('div');
+    el.className = 'item';
+    el.innerHTML = `
+      <strong>${escapeHtml(fav.alias || '')}</strong>
+      <div class="mono">${escapeHtml(fav.station_id || '')}</div>
+      <div class="muted">${escapeHtml(fav.target_path || '')}</div>
+    `;
+    wrap.appendChild(el);
+  });
+}
+
+async function loadStations() {
+  const res = await fetch(getBaseUrl() + '/stations');
+  const data = await res.json();
+  state.stations = [...(data.dab || []), ...(data.fm || [])];
+  renderStations();
+  showStatus(`Loaded ${state.stations.length} stations.`);
+}
+
+async function loadFavorites() {
+  const res = await fetch(getBaseUrl() + '/favorites');
+  const data = await res.json();
+  state.favorites = data.items || [];
+  renderFavorites();
+  showStatus(`Loaded ${state.favorites.length} favorites.`);
+}
+
+async function addFmStation() {
+  const payload = {
+    name: $('fmName').value.trim(),
+    frequency: Number($('fmFreq').value)
+  };
+
+  const res = await fetch(getBaseUrl() + '/stations/fm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    showStatus(`FM create failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  showStatus(`FM station added: ${text}`);
+  await loadStations();
+}
+
+async function postFavorite() {
+  let payload;
+  try {
+    payload = JSON.parse($('jsonBody').value);
+  } catch {
+    showStatus('Το JSON δεν είναι έγκυρο.', false);
+    return;
+  }
+
+  const res = await fetch(getBaseUrl() + '/favorites', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    showStatus(`POST failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  showStatus(`Favorite saved: ${text}`);
+  await loadFavorites();
+}
+
+async function scanDab() {
+  const block = $('dabBlock').value.trim();
+  const res = await fetch(getBaseUrl() + '/dab/scan/' + encodeURIComponent(block), {
+    method: 'POST'
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    showStatus(`DAB scan failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  showStatus(`DAB scan completed for block ${block}.`);
+  await loadStations();
+}
+
+$('syncJsonBtn').addEventListener('click', syncJson);
+$('postFavoriteBtn').addEventListener('click', postFavorite);
+$('addFmBtn').addEventListener('click', addFmStation);
+$('scanDabBtn').addEventListener('click', scanDab);
+$('loadStationsBtn').addEventListener('click', loadStations);
+$('loadFavoritesBtn').addEventListener('click', loadFavorites);
+$('stationSelect').addEventListener('change', (e) => {
+  $('stationId').value = e.target.value;
+  syncJson();
+});
+$('alias').addEventListener('input', syncJson);
+$('stationId').addEventListener('input', syncJson);
+
+$('themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.getAttribute('data-theme') === 'dark';
+  root.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').textContent = dark ? 'Dark mode' : 'Light mode';
+});
+
+$('baseUrl').value = window.location.origin;
+loadStations().catch(err => showStatus('Load stations failed: ' + err.message, false));
+loadFavorites().catch(err => showStatus('Load favorites failed: ' + err.message, false));
+</script>
 </body>
 </html>
