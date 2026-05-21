@@ -78,7 +78,7 @@ class DabService:
                 }
             await self.stop()
 
-        cmd = ["welle-cli", "-c", block, "-w", str(port)]
+        cmd = ["welle-cli", "-c", block, "-D", "-w", str(port)]
 
         self._proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -88,7 +88,7 @@ class DabService:
         self._block = block
         self._port = port
 
-        for _ in range(20):
+        for _ in range(30):
             if self._proc.returncode is not None:
                 stderr = ""
                 if self._proc.stderr:
@@ -102,14 +102,17 @@ class DabService:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(f"http://127.0.0.1:{port}/mux.json", timeout=2) as resp:
                         if resp.status == 200:
-                            return {
-                                "running": True,
-                                "block": block,
-                                "port": port,
-                                "mux_url": f"http://127.0.0.1:{port}/mux.json",
-                                "base_url": f"http://127.0.0.1:{port}",
-                                "cmd": cmd,
-                            }
+                            data = await resp.json(content_type=None)
+                            services = (data or {}).get("services") or []
+                            if services:
+                                return {
+                                    "running": True,
+                                    "block": block,
+                                    "port": port,
+                                    "mux_url": f"http://127.0.0.1:{port}/mux.json",
+                                    "base_url": f"http://127.0.0.1:{port}",
+                                    "cmd": cmd,
+                                }
             except Exception:
                 await asyncio.sleep(1)
 
@@ -120,7 +123,7 @@ class DabService:
             "mux_url": f"http://127.0.0.1:{port}/mux.json",
             "base_url": f"http://127.0.0.1:{port}",
             "cmd": cmd,
-            "warning": "web server started but mux.json not reachable yet",
+            "warning": "web server started but services may not be fully ready yet",
         }
 
     async def ensure_block_running(self, block: str, port: int = 7979):
@@ -234,21 +237,17 @@ class DabService:
             session = aiohttp.ClientSession()
             resp = None
             try:
-                resp = await session.get(upstream_url, timeout=None)
-                if resp.status != 200:
-                    body = await resp.text()
-                    raise RuntimeError(
-                        f"upstream stream failed: {resp.status} url={upstream_url} body={body[:300]}"
-                    )
-                async for chunk in resp.content.iter_chunked(4096):
-                    if chunk:
-                        yield chunk
-            finally:
-                try:
-                    if resp is not None:
-                        resp.close()
-                except Exception:
-                    pass
-                await session.close()
+                for attempt in range(8):
+                    resp = await session.get(upstream_url, timeout=None)
+                    if resp.status == 200:
+                        break
 
-        return generator()
+                    body = await resp.text()
+                    resp.close()
+
+                    if attempt < 7:
+                        await asyncio.sleep(1.0)
+                        continue
+
+                    raise RuntimeError(
+                        f"upstream 
