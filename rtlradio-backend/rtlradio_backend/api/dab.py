@@ -5,6 +5,8 @@ from fastapi.encoders import jsonable_encoder
 from ..services.dab_service import DabService
 from ..services import radio_state
 
+DEBUG_DAB_API_VERSION = "dab.py marker v2026-05-21-1717"
+
 router = APIRouter(prefix="/dab", tags=["dab"])
 _svc = DabService()
 radio_state.dab_service = _svc
@@ -62,15 +64,30 @@ def _safe_station_summary(station):
 @router.get("/info")
 async def dab_info():
     try:
-        return await _svc.info()
+        data = await _svc.info()
+        data["debug_api_version"] = DEBUG_DAB_API_VERSION
+        return data
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/debug-marker")
+async def dab_debug_marker():
+    return {
+        "ok": True,
+        "debug_api_version": DEBUG_DAB_API_VERSION,
+        "router_prefix": "/dab",
+        "service_class": _svc.__class__.__name__,
+    }
 
 
 @router.post("/scan/{block}")
 async def scan_block(block: str):
     try:
-        return await _svc.scan_and_store(block)
+        data = await _svc.scan_and_store(block)
+        if isinstance(data, dict):
+            data["debug_api_version"] = DEBUG_DAB_API_VERSION
+        return data
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -82,6 +99,7 @@ async def dab_status():
             "running": _svc._proc is not None and _svc._proc.returncode is None,
             "block": _svc._block,
             "port": _svc._port,
+            "debug_api_version": DEBUG_DAB_API_VERSION,
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
@@ -90,7 +108,10 @@ async def dab_status():
 @router.get("/mux")
 async def dab_mux():
     try:
-        return await _svc.mux()
+        data = await _svc.mux()
+        if isinstance(data, dict):
+            data["debug_api_version"] = DEBUG_DAB_API_VERSION
+        return data
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
@@ -131,6 +152,7 @@ async def dab_resolve_by_name(name: str):
             if exact_match and not has_stream and exact_unplayable is None:
                 exact_unplayable = _safe_station_summary(st)
                 exact_unplayable["error"] = "station exists but is not playable"
+                exact_unplayable["debug_api_version"] = DEBUG_DAB_API_VERSION
 
             if partial_match and has_stream:
                 partial_playable.append(_safe_station_summary(st))
@@ -148,6 +170,7 @@ async def dab_resolve_by_name(name: str):
                     content=jsonable_encoder({
                         "error": f"station not found with exact playable name: {name}",
                         "matches": partial_playable[:10],
+                        "debug_api_version": DEBUG_DAB_API_VERSION,
                     }),
                 )
 
@@ -155,6 +178,7 @@ async def dab_resolve_by_name(name: str):
                 status_code=404,
                 content=jsonable_encoder({
                     "error": f"station not found: {name}",
+                    "debug_api_version": DEBUG_DAB_API_VERSION,
                 }),
             )
 
@@ -164,6 +188,7 @@ async def dab_resolve_by_name(name: str):
                 status_code=500,
                 content=jsonable_encoder({
                     "error": f"matched station has no id: {name}",
+                    "debug_api_version": DEBUG_DAB_API_VERSION,
                 }),
             )
 
@@ -181,6 +206,7 @@ async def dab_resolve_by_name(name: str):
             "url_mp3": exact_playable.get("url_mp3"),
             "stream_path": stream_path,
             "play_url": stream_path,
+            "debug_api_version": DEBUG_DAB_API_VERSION,
         }
 
         return JSONResponse(status_code=200, content=jsonable_encoder(payload))
@@ -190,6 +216,7 @@ async def dab_resolve_by_name(name: str):
             content=jsonable_encoder({
                 "error": str(exc),
                 "name": name,
+                "debug_api_version": DEBUG_DAB_API_VERSION,
             }),
         )
 
@@ -205,6 +232,7 @@ async def dab_play(station_id: str):
                 "Cache-Control": "no-cache",
                 "X-Content-Type-Options": "nosniff",
                 "X-Station-Id": station_id,
+                "X-Debug-Api-Version": DEBUG_DAB_API_VERSION,
             },
         )
     except Exception as exc:
@@ -213,5 +241,6 @@ async def dab_play(station_id: str):
             content=jsonable_encoder({
                 "error": str(exc),
                 "station_id": station_id,
+                "debug_api_version": DEBUG_DAB_API_VERSION,
             }),
         )
