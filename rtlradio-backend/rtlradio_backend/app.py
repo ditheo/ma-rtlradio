@@ -18,14 +18,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://10.100.0.249:7070",
-        "http://0.0.0.0:7070",
-        "http://localhost:7070",
-        "http://127.0.0.1:7070",
-        "null",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -43,10 +37,7 @@ if STATIC_DIR.exists() and STATIC_DIR.is_dir():
 @app.get("/admin", include_in_schema=False)
 async def admin_ui():
     if not ADMIN_HTML.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"admin page not found: {ADMIN_HTML}",
-        )
+        raise HTTPException(status_code=404, detail=f"admin page not found: {ADMIN_HTML}")
     return FileResponse(ADMIN_HTML)
 
 
