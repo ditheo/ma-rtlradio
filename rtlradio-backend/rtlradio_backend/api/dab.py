@@ -98,7 +98,7 @@ async def dab_play_by_name(name: str):
                 or wanted in short_name.casefold()
             )
 
-            if exact_match and has_stream and exact_playable is None:
+            if exact_match and has_stream:
                 exact_playable = st
                 break
 
@@ -155,17 +155,7 @@ async def dab_play_by_name(name: str):
                 },
             )
 
-        stream = await _svc.proxy_stream_by_station_id(station_id)
-        return StreamingResponse(
-            stream,
-            media_type="audio/mpeg",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Content-Type-Options": "nosniff",
-                "X-Station-Id": station_id,
-                "X-Station-Name": exact_playable.get("name") or "",
-            },
-        )
+        return await dab_play(station_id)
     except Exception as exc:
         return JSONResponse(
             status_code=500,
