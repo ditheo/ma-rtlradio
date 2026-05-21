@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import uuid
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 LOGGER = logging.getLogger(__name__)
 
@@ -10,9 +10,37 @@ LOGGER = logging.getLogger(__name__)
 class RtlFmService:
     def __init__(self):
         self.serial = os.environ.get("DEVICE_SERIAL", "")
+        self._lock = asyncio.Lock()
+        self._active_id: Optional[str] = None
+        self._active_rtl: Optional[asyncio.subprocess.Process] = None
+        self._active_ffmpeg: Optional[asyncio.subprocess.Process] = None
+        self._cleanup_task: Optional[asyncio.Task] = None
 
     def _serial_args(self):
         return ["-d", self.serial] if self.serial else []
+
+    async def _stop_active(self, reason: str):
+        if self._cleanup_task and not self._cleanup_task.done():
+            self._cleanup_task.cancel()
+        for proc_name, proc in (("rtl_fm", self._active_rtl), ("ffmpeg", self._active_ffmpeg)):
+            if proc is None:
+                continue
+            try:
+                proc.terminate()
+                LOGGER.warning("stop_active reason=%s sent terminate to %s", reason, proc_name)
+            except ProcessLookupError:
+                LOGGER.warning("stop_active reason=%s %s already exited", reason, proc_name)
+            except Exception as err:
+                LOGGER.warning("stop_active reason=%s %s terminate error=%s", reason, proc_name, err)
+        if self._active_rtl or self._active_ffmpeg:
+            await asyncio.gather(
+                *(p.wait() for p in (self._active_rtl, self._active_ffmpeg) if p is not None),
+                return_exceptions=True,
+            )
+        self._active_id = None
+        self._active_rtl = None
+        self._active_ffmpeg = None
+        await asyncio.sleep(0.75)
 
     async def stream(self, frequency: float) -> AsyncGenerator[bytes, None]:
         request_id = uuid.uuid4().hex[:8]
@@ -28,20 +56,25 @@ class RtlFmService:
             "-f", "mp3", "pipe:1",
         ]
 
-        LOGGER.warning("[%s] stream start freq=%s rtl_cmd=%s", request_id, frequency, rtl_cmd)
-        LOGGER.warning("[%s] ffmpeg cmd=%s", request_id, ffmpeg_cmd)
+        async with self._lock:
+            await self._stop_active("new_stream")
+            LOGGER.warning("[%s] acquiring device for freq=%s", request_id, frequency)
 
-        rtl = await asyncio.create_subprocess_exec(
-            *rtl_cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        ffmpeg = await asyncio.create_subprocess_exec(
-            *ffmpeg_cmd,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+            rtl = await asyncio.create_subprocess_exec(
+                *rtl_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            ffmpeg = await asyncio.create_subprocess_exec(
+                *ffmpeg_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            self._active_id = request_id
+            self._active_rtl = rtl
+            self._active_ffmpeg = ffmpeg
+            LOGGER.warning("[%s] stream started", request_id)
 
         async def log_stderr(prefix: str, proc: asyncio.subprocess.Process):
             try:
@@ -50,11 +83,12 @@ class RtlFmService:
                     if not line:
                         break
                     LOGGER.warning("[%s] %s stderr: %s", request_id, prefix, line.decode(errors='ignore').rstrip())
+            except asyncio.CancelledError:
+                raise
             except Exception as err:
                 LOGGER.exception("[%s] %s stderr logger error: %s", request_id, prefix, err)
 
         async def pump():
-            LOGGER.warning("[%s] pump start", request_id)
             try:
                 while True:
                     chunk = await rtl.stdout.read(4096)
@@ -73,9 +107,8 @@ class RtlFmService:
             finally:
                 try:
                     ffmpeg.stdin.close()
-                    LOGGER.warning("[%s] ffmpeg stdin closed", request_id)
-                except Exception as err:
-                    LOGGER.warning("[%s] ffmpeg stdin close error: %s", request_id, err)
+                except Exception:
+                    pass
 
         rtl_stderr_task = asyncio.create_task(log_stderr("rtl_fm", rtl))
         ffmpeg_stderr_task = asyncio.create_task(log_stderr("ffmpeg", ffmpeg))
@@ -96,29 +129,11 @@ class RtlFmService:
             raise
         finally:
             LOGGER.warning("[%s] stream cleanup start", request_id)
-            for task_name, task in (
-                ("pump", pump_task),
-                ("rtl_stderr", rtl_stderr_task),
-                ("ffmpeg_stderr", ffmpeg_stderr_task),
-            ):
+            for task in (pump_task, rtl_stderr_task, ffmpeg_stderr_task):
                 task.cancel()
-                LOGGER.warning("[%s] cancelled task=%s", request_id, task_name)
-
-            for proc_name, proc in (("rtl_fm", rtl), ("ffmpeg", ffmpeg)):
-                try:
-                    proc.terminate()
-                    LOGGER.warning("[%s] terminate sent to %s", request_id, proc_name)
-                except ProcessLookupError:
-                    LOGGER.warning("[%s] %s already exited", request_id, proc_name)
-                except Exception as err:
-                    LOGGER.warning("[%s] %s terminate error: %s", request_id, proc_name, err)
-
-            results = await asyncio.gather(
-                pump_task, rtl_stderr_task, ffmpeg_stderr_task,
-                return_exceptions=True,
-            )
-            LOGGER.warning("[%s] background tasks done: %s", request_id, results)
-
-            waits = await asyncio.gather(rtl.wait(), ffmpeg.wait(), return_exceptions=True)
-            LOGGER.warning("[%s] process exit codes rtl=%s ffmpeg=%s", request_id, waits[0], waits[1])
+            async with self._lock:
+                if self._active_id == request_id:
+                    await self._stop_active("stream_cleanup")
+            await asyncio.gather(pump_task, rtl_stderr_task, ffmpeg_stderr_task, return_exceptions=True)
+            await asyncio.gather(rtl.wait(), ffmpeg.wait(), return_exceptions=True)
             LOGGER.warning("[%s] stream cleanup end", request_id)
