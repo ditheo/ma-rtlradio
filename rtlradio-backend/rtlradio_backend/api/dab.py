@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
-import traceback
 
 from ..services.dab_service import DabService
 from ..services import radio_state
@@ -46,8 +45,8 @@ async def dab_mux():
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-@router.get("/play-by-name/{name:path}")
-async def dab_play_by_name(name: str):
+@router.get("/resolve-by-name/{name:path}")
+async def dab_resolve_by_name(name: str):
     try:
         if radio_state.storage_service is None:
             raise RuntimeError("storage service not configured")
@@ -101,6 +100,7 @@ async def dab_play_by_name(name: str):
                     "block": st.get("block"),
                     "ensemble": st.get("ensemble"),
                     "url_mp3": st.get("url_mp3"),
+                    "stream_path": st.get("stream_path"),
                 })
 
         if exact_playable is None:
@@ -131,23 +131,24 @@ async def dab_play_by_name(name: str):
                 },
             )
 
-        stream = await _svc.proxy_stream_by_station_id(station_id)
-        return StreamingResponse(
-            stream,
-            media_type="audio/mpeg",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Content-Type-Options": "nosniff",
-                "X-Station-Id": station_id,
-            },
-        )
+        return {
+            "ok": True,
+            "query": name,
+            "resolved_name": exact_playable.get("name"),
+            "station_id": station_id,
+            "sid": exact_playable.get("sid"),
+            "block": exact_playable.get("block"),
+            "ensemble": exact_playable.get("ensemble"),
+            "url_mp3": exact_playable.get("url_mp3"),
+            "stream_path": exact_playable.get("stream_path") or f"/dab/play/{station_id}",
+            "play_url": exact_playable.get("stream_path") or f"/dab/play/{station_id}",
+        }
     except Exception as exc:
         return JSONResponse(
             status_code=500,
             content={
                 "error": str(exc),
                 "name": name,
-                "traceback": traceback.format_exc(),
             },
         )
 
@@ -171,6 +172,5 @@ async def dab_play(station_id: str):
             content={
                 "error": str(exc),
                 "station_id": station_id,
-                "traceback": traceback.format_exc(),
             },
         )
