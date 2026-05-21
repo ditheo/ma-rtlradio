@@ -1,0 +1,22 @@
+name: RTL-SDR Radio Backend
+version: "0.1.0"
+slug: rtlradio_backend
+description: "FM/DAB+ radio backend using an RTL-SDR USB dongle, for Music Assistant"
+url: "https://github.com/ditheo/ma-rtlradio"
+arch:
+  - aarch64
+  - amd64
+init: false
+usb: true
+privileged:
+  - SYS_MODULE
+ports:
+  8080/tcp: 8080
+ports_description:
+  8080/tcp: "RTL-SDR Radio Backend API"
+options:
+  device_serial: ""
+  log_level: info
+schema:
+  device_serial: str
+  log_level: "list(trace|debug|info|warning|error|fatal)?"

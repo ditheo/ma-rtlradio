@@ -1,0 +1,4 @@
+channel: stable
+name: RTL-SDR Radio for Music Assistant
+url: https://github.com/ditheo/ma-rtlradio
+maintainer: ditheo <ditheo@gmail.com>

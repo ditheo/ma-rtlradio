@@ -1,0 +1,22 @@
+name: Add-on Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump version in config.yaml
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          sed -i "s/^version: .*/version: \"${VERSION}\"/" rtlradio-backend/config.yaml
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rtlradio-backend/config.yaml
+          git diff --cached --quiet || git commit -m "chore: bump version to ${VERSION}"
+          git push origin HEAD:main

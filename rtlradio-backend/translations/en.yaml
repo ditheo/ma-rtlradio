@@ -1,0 +1,7 @@
+configuration:
+  device_serial:
+    name: RTL-SDR Device Serial
+    description: "Serial number of RTL-SDR device (leave empty for auto-detect)"
+  log_level:
+    name: Log Level
+    description: "Logging verbosity"

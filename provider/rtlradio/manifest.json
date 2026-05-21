@@ -1,0 +1,26 @@
+{
+  "type": "music",
+  "domain": "rtlradio",
+  "name": "RTL-SDR Radio",
+  "description": "FM and DAB+ radio using any RTL2832U-based USB dongle.",
+  "codeowners": [
+    "@ditheo"
+  ],
+  "requirements": [],
+  "config_entries": [
+    {
+      "key": "backend_url",
+      "type": "string",
+      "label": "Backend URL",
+      "default": "http://localhost:8080",
+      "required": true
+    },
+    {
+      "key": "stations",
+      "type": "string",
+      "label": "FM Presets (JSON)",
+      "default": "[{\"name\":\"ERA\",\"frequency\":66.0},{\"name\":\"Skai FM\",\"frequency\":100.3}]",
+      "required": true
+    }
+  ]
+}
