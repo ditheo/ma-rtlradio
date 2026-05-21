@@ -221,7 +221,9 @@ class DabService:
             raise RuntimeError(f"station has no url_mp3: {station_id}")
 
         parsed = urlparse(url_mp3)
-        if parsed.path:
+        if parsed.scheme or parsed.netloc:
+            upstream_url = url_mp3
+        elif parsed.path:
             upstream_url = f"http://127.0.0.1:{self._port}{parsed.path}"
             if parsed.query:
                 upstream_url += f"?{parsed.query}"
