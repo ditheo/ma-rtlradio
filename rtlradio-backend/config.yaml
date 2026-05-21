@@ -1,5 +1,5 @@
 name: RTL-SDR Radio Backend
-version: "0.1.4"
+version: "0.1.5"
 slug: rtlradio_backend
 description: "FM/DAB+ radio backend using an RTL-SDR USB dongle, for Music Assistant"
 url: "https://github.com/ditheo/ma-rtlradio"
