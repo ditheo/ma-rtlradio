@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -13,6 +14,20 @@ ADMIN_HTML = STATIC_DIR / "admin.html"
 app = FastAPI(
     title="RTL-SDR Radio Backend",
     version="0.3.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://10.100.0.249:7070",
+        "http://0.0.0.0:7070",
+        "http://localhost:7070",
+        "http://127.0.0.1:7070",
+        "null",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(fm.router)
