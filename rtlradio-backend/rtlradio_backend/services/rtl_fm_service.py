@@ -1,6 +1,10 @@
 import asyncio
+import logging
 import os
+import uuid
 from typing import AsyncGenerator
+
+LOGGER = logging.getLogger(__name__)
 
 
 class RtlFmService:
@@ -11,58 +15,110 @@ class RtlFmService:
         return ["-d", self.serial] if self.serial else []
 
     async def stream(self, frequency: float) -> AsyncGenerator[bytes, None]:
+        request_id = uuid.uuid4().hex[:8]
         freq_hz = int(frequency * 1_000_000)
         rtl_cmd = [
             "rtl_fm", "-f", str(freq_hz), "-M", "wbfm",
             "-s", "200000", "-r", "44100", "-"
         ] + self._serial_args()
         ffmpeg_cmd = [
-            "ffmpeg", "-loglevel", "quiet",
+            "ffmpeg", "-loglevel", "warning",
             "-f", "s16le", "-ar", "44100", "-ac", "1", "-i", "pipe:0",
             "-acodec", "libmp3lame", "-b:a", "128k", "-ac", "2",
             "-f", "mp3", "pipe:1",
         ]
 
+        LOGGER.warning("[%s] stream start freq=%s rtl_cmd=%s", request_id, frequency, rtl_cmd)
+        LOGGER.warning("[%s] ffmpeg cmd=%s", request_id, ffmpeg_cmd)
+
         rtl = await asyncio.create_subprocess_exec(
             *rtl_cmd,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
         )
         ffmpeg = await asyncio.create_subprocess_exec(
             *ffmpeg_cmd,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
         )
 
+        async def log_stderr(prefix: str, proc: asyncio.subprocess.Process):
+            try:
+                while True:
+                    line = await proc.stderr.readline()
+                    if not line:
+                        break
+                    LOGGER.warning("[%s] %s stderr: %s", request_id, prefix, line.decode(errors='ignore').rstrip())
+            except Exception as err:
+                LOGGER.exception("[%s] %s stderr logger error: %s", request_id, prefix, err)
+
         async def pump():
+            LOGGER.warning("[%s] pump start", request_id)
             try:
                 while True:
                     chunk = await rtl.stdout.read(4096)
                     if not chunk:
+                        LOGGER.warning("[%s] rtl stdout EOF", request_id)
                         break
                     ffmpeg.stdin.write(chunk)
                     await ffmpeg.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError) as err:
+                LOGGER.warning("[%s] pump pipe closed: %s", request_id, err)
+            except asyncio.CancelledError:
+                LOGGER.warning("[%s] pump cancelled", request_id)
+                raise
+            except Exception as err:
+                LOGGER.exception("[%s] pump error: %s", request_id, err)
             finally:
                 try:
                     ffmpeg.stdin.close()
-                except Exception:
-                    pass
+                    LOGGER.warning("[%s] ffmpeg stdin closed", request_id)
+                except Exception as err:
+                    LOGGER.warning("[%s] ffmpeg stdin close error: %s", request_id, err)
 
+        rtl_stderr_task = asyncio.create_task(log_stderr("rtl_fm", rtl))
+        ffmpeg_stderr_task = asyncio.create_task(log_stderr("ffmpeg", ffmpeg))
         pump_task = asyncio.create_task(pump())
 
         try:
             while True:
                 out = await ffmpeg.stdout.read(4096)
                 if not out:
+                    LOGGER.warning("[%s] ffmpeg stdout EOF", request_id)
                     break
                 yield out
+        except asyncio.CancelledError:
+            LOGGER.warning("[%s] stream cancelled", request_id)
+            raise
+        except Exception as err:
+            LOGGER.exception("[%s] stream loop error: %s", request_id, err)
+            raise
         finally:
-            pump_task.cancel()
-            for proc in (rtl, ffmpeg):
+            LOGGER.warning("[%s] stream cleanup start", request_id)
+            for task_name, task in (
+                ("pump", pump_task),
+                ("rtl_stderr", rtl_stderr_task),
+                ("ffmpeg_stderr", ffmpeg_stderr_task),
+            ):
+                task.cancel()
+                LOGGER.warning("[%s] cancelled task=%s", request_id, task_name)
+
+            for proc_name, proc in (("rtl_fm", rtl), ("ffmpeg", ffmpeg)):
                 try:
                     proc.terminate()
+                    LOGGER.warning("[%s] terminate sent to %s", request_id, proc_name)
                 except ProcessLookupError:
-                    pass
-            await asyncio.gather(pump_task, return_exceptions=True)
-            await asyncio.gather(rtl.wait(), ffmpeg.wait(), return_exceptions=True)
+                    LOGGER.warning("[%s] %s already exited", request_id, proc_name)
+                except Exception as err:
+                    LOGGER.warning("[%s] %s terminate error: %s", request_id, proc_name, err)
+
+            results = await asyncio.gather(
+                pump_task, rtl_stderr_task, ffmpeg_stderr_task,
+                return_exceptions=True,
+            )
+            LOGGER.warning("[%s] background tasks done: %s", request_id, results)
+
+            waits = await asyncio.gather(rtl.wait(), ffmpeg.wait(), return_exceptions=True)
+            LOGGER.warning("[%s] process exit codes rtl=%s ffmpeg=%s", request_id, waits[0], waits[1])
+            LOGGER.warning("[%s] stream cleanup end", request_id)
