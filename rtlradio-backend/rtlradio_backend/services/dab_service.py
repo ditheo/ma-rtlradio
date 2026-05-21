@@ -183,7 +183,7 @@ class DabService:
                     "ensemble": ensemble,
                     "genre": pty,
                     "bitrate": bitrate,
-                    "stream_path": f"/stream/dab/dab:{block}:{sid}",
+                    "stream_path": f"/dab/play/dab:{block}:{sid}",
                     "last_seen": self._utcnow(),
                 })
 
