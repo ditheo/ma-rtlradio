@@ -6,36 +6,20 @@
   <title>RTL Radio Admin</title>
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap" rel="stylesheet">
   <style>
-    :root, [data-theme="light"] {
-      --bg:#f7f6f2; --surface:#f9f8f5; --surface2:#fbfbf9; --border:#d4d1ca;
-      --text:#28251d; --muted:#7a7974; --primary:#01696f; --primary2:#cedcd8;
-      --ok:#437a22; --err:#a12c7b; --radius:14px; --shadow:0 4px 12px rgba(0,0,0,.08);
-    }
-    [data-theme="dark"] {
-      --bg:#171614; --surface:#1c1b19; --surface2:#201f1d; --border:#393836;
-      --text:#cdccca; --muted:#797876; --primary:#4f98a3; --primary2:#313b3b;
-      --ok:#6daa45; --err:#d163a7; --shadow:0 4px 12px rgba(0,0,0,.28);
-    }
-    *{box-sizing:border-box} body{margin:0;font-family:'Satoshi',sans-serif;background:var(--bg);color:var(--text)}
-    .wrap{max-width:1200px;margin:0 auto;padding:24px}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
+    :root,[data-theme="light"]{--bg:#f7f6f2;--surface:#f9f8f5;--surface2:#fbfbf9;--border:#d4d1ca;--text:#28251d;--muted:#7a7974;--primary:#01696f;--primary2:#cedcd8;--ok:#437a22;--err:#a12c7b;--radius:14px;--shadow:0 4px 12px rgba(0,0,0,.08)}
+    [data-theme="dark"]{--bg:#171614;--surface:#1c1b19;--surface2:#201f1d;--border:#393836;--text:#cdccca;--muted:#797876;--primary:#4f98a3;--primary2:#313b3b;--ok:#6daa45;--err:#d163a7;--shadow:0 4px 12px rgba(0,0,0,.28)}
+    *{box-sizing:border-box}body{margin:0;font-family:'Satoshi',sans-serif;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}
+    .wrap{max-width:1280px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
     .logo{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary2))}
-    .title{font-size:32px;font-weight:700;line-height:1.05}.muted{color:var(--muted)}
-    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+    .title{font-size:32px;font-weight:700;line-height:1.05}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
-    .card h2{margin:0 0 14px;font-size:22px}
-    .field{display:grid;gap:8px;margin-bottom:14px}
-    label{font-size:14px;font-weight:700}
-    input,select,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font:inherit}
-    textarea{min-height:130px;resize:vertical}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    button{border:0;border-radius:10px;padding:12px 14px;font-weight:700;cursor:pointer}
-    .primary{background:var(--primary);color:#fff}.secondary{background:var(--primary2);color:var(--text)}
-    .status{display:none;padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:18px}
-    .status.show{display:block}.status.ok{background:color-mix(in oklab, var(--ok) 14%, var(--surface));}.status.err{background:color-mix(in oklab, var(--err) 14%, var(--surface));}
-    .list{display:grid;gap:10px}.item{padding:12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
-    .item strong{display:block}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
-    @media (max-width:900px){.grid{grid-template-columns:1fr}.title{font-size:26px}}
+    .card h2{margin:0 0 14px;font-size:22px}.field{display:grid;gap:8px;margin-bottom:14px}label{font-size:14px;font-weight:700}
+    input,select,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2)}textarea{min-height:130px;resize:vertical}
+    .row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:10px;padding:12px 14px;font-weight:700}.primary{background:var(--primary);color:#fff}.secondary{background:var(--primary2);color:var(--text)}
+    .status{display:none;padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:18px}.status.show{display:block}.status.ok{background:color-mix(in oklab, var(--ok) 14%, var(--surface))}.status.err{background:color-mix(in oklab, var(--err) 14%, var(--surface))}
+    .list{display:grid;gap:10px;max-height:480px;overflow:auto}.item{padding:12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
+    .item strong{display:block}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.small{font-size:13px}
+    @media (max-width:980px){.grid{grid-template-columns:1fr}.title{font-size:26px}}
   </style>
 </head>
 <body>
@@ -45,10 +29,10 @@
       <div class="mark"></div>
       <div>
         <div class="title">RTL Radio Admin</div>
-        <div class="muted">FM catalog, DAB stations και favorites από μία σελίδα.</div>
+        <div class="muted">FM import από Radio Browser και χειροκίνητη προσθήκη local FM.</div>
       </div>
     </div>
-    <button class="secondary" id="themeBtn" type="button">Dark mode</button>
+    <button class="btn secondary" id="themeBtn" type="button">Dark mode</button>
   </div>
 
   <div id="status" class="status"></div>
@@ -58,16 +42,16 @@
       <h2>Backend</h2>
       <div class="field">
         <label for="baseUrl">Base URL</label>
-        <input id="baseUrl" value="" placeholder="π.χ. http://10.100.0.249:7070">
+        <input id="baseUrl" placeholder="π.χ. http://10.100.0.249:7070">
       </div>
       <div class="row">
-        <button class="secondary" id="loadStationsBtn" type="button">Load stations</button>
-        <button class="secondary" id="loadFavoritesBtn" type="button">Load favorites</button>
+        <button class="btn secondary" id="loadStationsBtn" type="button">Load stations</button>
+        <button class="btn secondary" id="loadFavoritesBtn" type="button">Load favorites</button>
       </div>
     </section>
 
     <section class="card">
-      <h2>Add FM station</h2>
+      <h2>Manual FM</h2>
       <div class="field">
         <label for="fmName">FM name</label>
         <input id="fmName" placeholder="π.χ. Best Radio">
@@ -77,12 +61,32 @@
         <input id="fmFreq" type="number" step="0.1" placeholder="π.χ. 105.8">
       </div>
       <div class="row">
-        <button class="primary" id="addFmBtn" type="button">POST /stations/fm</button>
+        <button class="btn primary" id="addFmBtn" type="button">POST /stations/fm</button>
       </div>
     </section>
   </div>
 
   <div class="grid" style="margin-top:20px">
+    <section class="card">
+      <h2>FM catalog import</h2>
+      <div class="field">
+        <label for="countrySelect">Country</label>
+        <select id="countrySelect"><option value="">Select country</option></select>
+      </div>
+      <div class="field">
+        <label for="stateSelect">State / Region</label>
+        <select id="stateSelect"><option value="">Any state</option></select>
+      </div>
+      <div class="field">
+        <label for="searchName">Station name filter</label>
+        <input id="searchName" placeholder="π.χ. Athens, Rock, Jazz, Best">
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="loadCountriesBtn" type="button">Load countries</button>
+        <button class="btn primary" id="searchCatalogBtn" type="button">Search catalog</button>
+      </div>
+    </section>
+
     <section class="card">
       <h2>Create favorite</h2>
       <div class="field">
@@ -97,7 +101,7 @@
       </div>
       <div class="field">
         <label for="stationId">station_id</label>
-        <input id="stationId" placeholder="π.χ. dab:5A:0x1005 ή fm:105.8">
+        <input id="stationId" placeholder="π.χ. dab:5A:0x1005 ή fm:105.8 ή fmcatalog:uuid">
       </div>
       <div class="field">
         <label for="jsonBody">JSON body</label>
@@ -107,27 +111,37 @@
 }</textarea>
       </div>
       <div class="row">
-        <button class="primary" id="postFavoriteBtn" type="button">POST /favorites</button>
-        <button class="secondary" id="syncJsonBtn" type="button">Sync JSON</button>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>DAB scan</h2>
-      <div class="field">
-        <label for="dabBlock">Block</label>
-        <input id="dabBlock" value="5A" placeholder="π.χ. 5A">
-      </div>
-      <div class="row">
-        <button class="primary" id="scanDabBtn" type="button">POST /dab/scan/{block}</button>
+        <button class="btn primary" id="postFavoriteBtn" type="button">POST /favorites</button>
+        <button class="btn secondary" id="syncJsonBtn" type="button">Sync JSON</button>
       </div>
     </section>
   </div>
 
   <div class="grid" style="margin-top:20px">
     <section class="card">
-      <h2>Stations</h2>
+      <h2>Catalog results</h2>
+      <div class="row" style="margin-bottom:14px">
+        <button class="btn primary" id="importSelectedBtn" type="button">Import selected stations</button>
+      </div>
+      <div id="catalogList" class="list"></div>
+    </section>
+
+    <section class="card">
+      <h2>Stored stations</h2>
       <div id="stationsList" class="list"></div>
+    </section>
+  </div>
+
+  <div class="grid" style="margin-top:20px">
+    <section class="card">
+      <h2>DAB scan</h2>
+      <div class="field">
+        <label for="dabBlock">Block</label>
+        <input id="dabBlock" value="5A">
+      </div>
+      <div class="row">
+        <button class="btn primary" id="scanDabBtn" type="button">POST /dab/scan/{block}</button>
+      </div>
     </section>
 
     <section class="card">
@@ -138,13 +152,20 @@
 </div>
 
 <script>
-const state = { stations: [], favorites: [] };
+const state = {
+  stations: [],
+  favorites: [],
+  countries: [],
+  states: [],
+  catalog: [],
+  selectedCatalog: new Map(),
+};
+
 const $ = (id) => document.getElementById(id);
 
 function getBaseUrl() {
   const raw = $('baseUrl').value.trim();
-  if (raw) return raw.replace(/\/$/, '');
-  return window.location.origin;
+  return raw ? raw.replace(/\/$/, '') : window.location.origin;
 }
 
 function showStatus(message, ok = true) {
@@ -163,11 +184,10 @@ function escapeHtml(value) {
 }
 
 function syncJson() {
-  const payload = {
+  $('jsonBody').value = JSON.stringify({
     alias: $('alias').value.trim(),
     station_id: $('stationId').value.trim()
-  };
-  $('jsonBody').value = JSON.stringify(payload, null, 2);
+  }, null, 2);
 }
 
 function renderStations() {
@@ -178,13 +198,16 @@ function renderStations() {
     return;
   }
 
+  const select = $('stationSelect');
+  select.innerHTML = '<option value="">Διάλεξε station_id</option>';
+
   state.stations.forEach((st) => {
     const el = document.createElement('div');
     el.className = 'item';
     el.innerHTML = `
       <strong>${escapeHtml(st.name || st.id)}</strong>
       <div class="mono">${escapeHtml(st.id || '')}</div>
-      <div class="muted">${escapeHtml(st.stream_path || '')}</div>
+      <div class="small muted">${escapeHtml(st.stream_path || '')}</div>
     `;
     el.addEventListener('click', () => {
       $('stationId').value = st.id || '';
@@ -192,11 +215,7 @@ function renderStations() {
       syncJson();
     });
     wrap.appendChild(el);
-  });
 
-  const select = $('stationSelect');
-  select.innerHTML = '<option value="">Διάλεξε station_id</option>';
-  state.stations.forEach((st) => {
     const opt = document.createElement('option');
     opt.value = st.id || '';
     opt.textContent = `${st.name || st.id} — ${st.id || ''}`;
@@ -213,14 +232,77 @@ function renderFavorites() {
   }
 
   state.favorites.forEach((fav) => {
+    const playUrl = getBaseUrl() + '/favorites/play/' + encodeURIComponent(fav.alias || '');
     const el = document.createElement('div');
     el.className = 'item';
     el.innerHTML = `
       <strong>${escapeHtml(fav.alias || '')}</strong>
       <div class="mono">${escapeHtml(fav.station_id || '')}</div>
-      <div class="muted">${escapeHtml(fav.target_path || '')}</div>
+      <div class="small muted">${escapeHtml(fav.target_path || '')}</div>
+      <div class="row" style="margin-top:10px">
+        <a class="btn secondary" href="${playUrl}" target="_blank" rel="noopener noreferrer">Play</a>
+      </div>
     `;
     wrap.appendChild(el);
+  });
+}
+
+function renderCountries() {
+  const select = $('countrySelect');
+  select.innerHTML = '<option value="">Select country</option>';
+  state.countries.forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c.code;
+    opt.textContent = `${c.name} (${c.code})`;
+    select.appendChild(opt);
+  });
+}
+
+function renderStates() {
+  const select = $('stateSelect');
+  select.innerHTML = '<option value="">Any state</option>';
+  state.states.forEach((s) => {
+    const opt = document.createElement('option');
+    opt.value = s.name;
+    opt.textContent = `${s.name} (${s.stationcount || 0})`;
+    select.appendChild(opt);
+  });
+}
+
+function renderCatalog() {
+  const wrap = $('catalogList');
+  wrap.innerHTML = '';
+  if (!state.catalog.length) {
+    wrap.innerHTML = '<div class="muted">Δεν υπάρχουν catalog results.</div>';
+    return;
+  }
+
+  state.catalog.forEach((st) => {
+    const checked = state.selectedCatalog.has(st.stationuuid) ? 'checked' : '';
+    const el = document.createElement('label');
+    el.className = 'item';
+    el.innerHTML = `
+      <div class="row" style="align-items:flex-start;justify-content:space-between">
+        <div style="flex:1">
+          <strong>${escapeHtml(st.name)}</strong>
+          <div class="small muted">${escapeHtml([st.country, st.state, st.language].filter(Boolean).join(' • '))}</div>
+          <div class="mono">${escapeHtml(st.stationuuid)}</div>
+          <div class="small muted">${escapeHtml(st.url_resolved || st.url || '')}</div>
+        </div>
+        <input type="checkbox" data-uuid="${escapeHtml(st.stationuuid)}" ${checked}>
+      </div>
+    `;
+    wrap.appendChild(el);
+  });
+
+  wrap.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener('change', (e) => {
+      const uuid = e.target.getAttribute('data-uuid');
+      const station = state.catalog.find((x) => x.stationuuid === uuid);
+      if (!station) return;
+      if (e.target.checked) state.selectedCatalog.set(uuid, station);
+      else state.selectedCatalog.delete(uuid);
+    });
   });
 }
 
@@ -238,6 +320,70 @@ async function loadFavorites() {
   state.favorites = data.items || [];
   renderFavorites();
   showStatus(`Loaded ${state.favorites.length} favorites.`);
+}
+
+async function loadCountries() {
+  const res = await fetch(getBaseUrl() + '/fm/catalog/countries');
+  const data = await res.json();
+  state.countries = data.items || [];
+  renderCountries();
+  showStatus(`Loaded ${state.countries.length} countries.`);
+}
+
+async function loadStates() {
+  const country = $('countrySelect').value.trim();
+  if (!country) {
+    state.states = [];
+    renderStates();
+    return;
+  }
+  const res = await fetch(getBaseUrl() + '/fm/catalog/states/' + encodeURIComponent(country));
+  const data = await res.json();
+  state.states = data.items || [];
+  renderStates();
+  showStatus(`Loaded ${state.states.length} states for ${country}.`);
+}
+
+async function searchCatalog() {
+  const params = new URLSearchParams();
+  const country = $('countrySelect').value.trim();
+  const stateName = $('stateSelect').value.trim();
+  const name = $('searchName').value.trim();
+
+  if (country) params.set('countrycode', country);
+  if (stateName) params.set('state', stateName);
+  if (name) params.set('name', name);
+  params.set('limit', '100');
+
+  const res = await fetch(getBaseUrl() + '/fm/catalog/stations?' + params.toString());
+  const data = await res.json();
+  state.catalog = data.items || [];
+  state.selectedCatalog.clear();
+  renderCatalog();
+  showStatus(`Catalog search returned ${state.catalog.length} stations.`);
+}
+
+async function importSelectedCatalog() {
+  const items = Array.from(state.selectedCatalog.values());
+  if (!items.length) {
+    showStatus('Διάλεξε πρώτα station(s) από το catalog.', false);
+    return;
+  }
+
+  const res = await fetch(getBaseUrl() + '/fm/catalog/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items })
+  });
+
+  const text = await res.text();
+  if (!res.ok) {
+    showStatus(`Catalog import failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  showStatus(`Imported ${items.length} catalog stations.`);
+  await loadStations();
 }
 
 async function addFmStation() {
@@ -258,7 +404,7 @@ async function addFmStation() {
     return;
   }
 
-  showStatus(`FM station added: ${text}`);
+  showStatus(`FM station added.`);
   await loadStations();
 }
 
@@ -283,7 +429,7 @@ async function postFavorite() {
     return;
   }
 
-  showStatus(`Favorite saved: ${text}`);
+  showStatus('Favorite saved.');
   await loadFavorites();
 }
 
@@ -303,12 +449,23 @@ async function scanDab() {
   await loadStations();
 }
 
-$('syncJsonBtn').addEventListener('click', syncJson);
-$('postFavoriteBtn').addEventListener('click', postFavorite);
-$('addFmBtn').addEventListener('click', addFmStation);
-$('scanDabBtn').addEventListener('click', scanDab);
+$('baseUrl').value = window.location.origin;
+$('themeBtn').addEventListener('click', () => {
+  const root = document.documentElement;
+  const dark = root.getAttribute('data-theme') === 'dark';
+  root.setAttribute('data-theme', dark ? 'light' : 'dark');
+  $('themeBtn').textContent = dark ? 'Dark mode' : 'Light mode';
+});
 $('loadStationsBtn').addEventListener('click', loadStations);
 $('loadFavoritesBtn').addEventListener('click', loadFavorites);
+$('loadCountriesBtn').addEventListener('click', loadCountries);
+$('countrySelect').addEventListener('change', loadStates);
+$('searchCatalogBtn').addEventListener('click', searchCatalog);
+$('importSelectedBtn').addEventListener('click', importSelectedCatalog);
+$('addFmBtn').addEventListener('click', addFmStation);
+$('postFavoriteBtn').addEventListener('click', postFavorite);
+$('syncJsonBtn').addEventListener('click', syncJson);
+$('scanDabBtn').addEventListener('click', scanDab);
 $('stationSelect').addEventListener('change', (e) => {
   $('stationId').value = e.target.value;
   syncJson();
@@ -316,16 +473,9 @@ $('stationSelect').addEventListener('change', (e) => {
 $('alias').addEventListener('input', syncJson);
 $('stationId').addEventListener('input', syncJson);
 
-$('themeBtn').addEventListener('click', () => {
-  const root = document.documentElement;
-  const dark = root.getAttribute('data-theme') === 'dark';
-  root.setAttribute('data-theme', dark ? 'light' : 'dark');
-  $('themeBtn').textContent = dark ? 'Dark mode' : 'Light mode';
-});
-
-$('baseUrl').value = window.location.origin;
 loadStations().catch(err => showStatus('Load stations failed: ' + err.message, false));
 loadFavorites().catch(err => showStatus('Load favorites failed: ' + err.message, false));
+loadCountries().catch(err => showStatus('Load countries failed: ' + err.message, false));
 </script>
 </body>
 </html>
