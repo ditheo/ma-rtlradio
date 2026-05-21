@@ -13,7 +13,7 @@ privileged:
 ports:
   7070/tcp: 7070
 ports_description:
-  8080/tcp: "RTL-SDR Radio Backend API"
+  7070/tcp: "RTL-SDR Radio Backend API"
 options:
   device_serial: ""
   log_level: info
