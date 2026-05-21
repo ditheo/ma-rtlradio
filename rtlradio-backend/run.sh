@@ -12,5 +12,5 @@ done
 
 exec python3 -m uvicorn rtlradio_backend.app:app \
     --host 0.0.0.0 \
-    --port 8080 \
+    --port 7070 \
     --log-level "${LOG_LEVEL}"
