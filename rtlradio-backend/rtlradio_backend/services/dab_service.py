@@ -201,3 +201,31 @@ class DabService:
                     "json": data,
                     "raw": text,
                 }
+
+    async def proxy_stream(self, sid: str):
+        if not self._port:
+            raise RuntimeError("web server not started")
+
+        url = f"http://127.0.0.1:{self._port}/mp3/{sid}"
+
+        async def generator():
+            session = aiohttp.ClientSession()
+            resp = None
+            try:
+                resp = await session.get(url, timeout=None)
+                if resp.status != 200:
+                    body = await resp.text()
+                    raise RuntimeError(f"upstream stream failed: {resp.status} body={body[:300]}")
+
+                async for chunk in resp.content.iter_chunked(4096):
+                    if chunk:
+                        yield chunk
+            finally:
+                try:
+                    if resp is not None:
+                        resp.close()
+                except Exception:
+                    pass
+                await session.close()
+
+        return generator()
