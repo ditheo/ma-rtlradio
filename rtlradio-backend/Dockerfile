@@ -12,6 +12,9 @@ EOF
 RUN apk add --no-cache \
     python3 \
     py3-pip \
+    build-base \
+    musl-dev \
+    python3-dev \
     rtl-sdr \
     ffmpeg \
     curl \
