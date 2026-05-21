@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from ..services.dab_service import DabService
 from ..services import radio_state
 
@@ -100,10 +100,14 @@ async def dab_programmes():
 @router.get("/play/{sid}")
 async def dab_play(sid: str):
     try:
+        stream = await _svc.proxy_stream(sid)
         return StreamingResponse(
-            _svc.proxy_stream(sid),
+            stream,
             media_type="audio/mpeg",
-            headers={"Cache-Control": "no-cache", "X-Content-Type-Options": "nosniff"},
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Content-Type-Options": "nosniff",
+            },
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        return JSONResponse(status_code=500, content={"error": str(exc), "sid": sid})
