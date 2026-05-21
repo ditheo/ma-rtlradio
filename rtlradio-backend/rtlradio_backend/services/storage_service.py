@@ -1,213 +1,150 @@
-import asyncio
+from __future__ import annotations
+
 import json
-import os
 from copy import deepcopy
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 class StorageService:
-    def __init__(self, path: str = "/data/stations.json"):
-        self.path = path
-        self._lock = asyncio.Lock()
+    def __init__(self, storage_path: str | None = None) -> None:
+        default_path = Path("/config/rtlradio/stations.json")
+        self._path = Path(storage_path) if storage_path else default_path
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._ensure_file()
 
-    def _utcnow(self) -> str:
-        return datetime.now(timezone.utc).isoformat()
-
-    def _default_data(self) -> dict:
+    def _default_data(self) -> dict[str, Any]:
         return {
-            "schema_version": 2,
-            "updated_at": self._utcnow(),
+            "schema_version": 1,
+            "updated_at": _now_iso(),
             "dab": [],
             "fm": [],
             "favorites": [],
         }
 
-    async def _ensure_file(self):
-        directory = os.path.dirname(self.path)
-        if directory:
-            os.makedirs(directory, exist_ok=True)
+    def _ensure_file(self) -> None:
+        if not self._path.exists():
+            self._write(self._default_data())
 
-        if not os.path.exists(self.path):
-            async with self._lock:
-                if not os.path.exists(self.path):
-                    with open(self.path, "w", encoding="utf-8") as f:
-                        json.dump(self._default_data(), f, ensure_ascii=False, indent=2)
-
-    async def read(self) -> dict:
-        await self._ensure_file()
-        async with self._lock:
-            with open(self.path, "r", encoding="utf-8") as f:
+    def _read(self) -> dict[str, Any]:
+        self._ensure_file()
+        try:
+            with self._path.open("r", encoding="utf-8") as f:
                 data = json.load(f)
+        except Exception:
+            data = self._default_data()
 
-        data.setdefault("schema_version", 2)
-        data.setdefault("updated_at", self._utcnow())
+        data.setdefault("schema_version", 1)
+        data.setdefault("updated_at", _now_iso())
         data.setdefault("dab", [])
         data.setdefault("fm", [])
         data.setdefault("favorites", [])
         return data
 
-    async def write(self, data: dict) -> dict:
-        await self._ensure_file()
-        payload = deepcopy(data)
-        payload["updated_at"] = self._utcnow()
-        payload.setdefault("schema_version", 2)
-        payload.setdefault("dab", [])
-        payload.setdefault("fm", [])
-        payload.setdefault("favorites", [])
+    def _write(self, data: dict[str, Any]) -> dict[str, Any]:
+        data["updated_at"] = _now_iso()
+        with self._path.open("w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return data
 
-        async with self._lock:
-            with open(self.path, "w", encoding="utf-8") as f:
-                json.dump(payload, f, ensure_ascii=False, indent=2)
+    async def get_all(self) -> dict[str, Any]:
+        return deepcopy(self._read())
 
-        return payload
+    async def list_stations(self, band: str | None = None) -> list[dict[str, Any]]:
+        data = self._read()
+        if band == "dab":
+            return deepcopy(data["dab"])
+        if band == "fm":
+            return deepcopy(data["fm"])
+        return deepcopy(data["dab"] + data["fm"])
 
-    async def get_all_stations(self) -> dict:
-        return await self.read()
+    async def upsert_station(self, band: str, station: dict[str, Any]) -> dict[str, Any]:
+        if band not in {"dab", "fm"}:
+            raise ValueError("band must be 'dab' or 'fm'")
 
-    async def get_dab_stations(self) -> list:
-        data = await self.read()
-        return data.get("dab", [])
+        data = self._read()
+        items = data[band]
 
-    async def get_fm_stations(self) -> list:
-        data = await self.read()
-        return data.get("fm", [])
+        station = deepcopy(station)
+        station["last_seen"] = _now_iso()
 
-    async def get_favorites(self) -> list:
-        data = await self.read()
-        return data.get("favorites", [])
+        existing_index = next((i for i, s in enumerate(items) if s.get("id") == station.get("id")), None)
+        if existing_index is None:
+            items.append(station)
+        else:
+            items[existing_index] = {**items[existing_index], **station}
 
-    async def upsert_dab_stations(self, stations: list) -> dict:
-        data = await self.read()
-        current = data.get("dab", [])
-        by_id = {item["id"]: item for item in current if "id" in item}
+        self._write(data)
+        return deepcopy(station)
 
-        for station in stations:
-            by_id[station["id"]] = station
-
-        data["dab"] = sorted(
-            by_id.values(),
-            key=lambda x: (
-                x.get("block", ""),
-                (x.get("name") or "").lower(),
-                x.get("sid", ""),
-            ),
-        )
-        return await self.write(data)
-
-    async def add_fm_station(self, name: str, frequency: float) -> dict:
-        data = await self.read()
+    async def add_or_update_fm_station(self, name: str, frequency: float) -> dict[str, Any]:
         freq = round(float(frequency), 1)
-        station_id = f"fm:{freq:.1f}"
-
         station = {
-            "id": station_id,
+            "id": f"fm:{freq:.1f}",
             "type": "fm",
-            "name": name,
+            "source": "manual",
+            "name": name.strip(),
+            "short_name": name.strip()[:12],
             "frequency": freq,
-            "stream_path": f"/stream/fm/{freq}",
-            "last_seen": self._utcnow(),
+            "stream_path": f"/stream/fm/{freq:.1f}",
         }
+        return await self.upsert_station("fm", station)
 
-        current = data.get("fm", [])
-        by_id = {item["id"]: item for item in current if "id" in item}
-        by_id[station_id] = station
-
-        data["fm"] = sorted(
-            by_id.values(),
-            key=lambda x: (x.get("frequency", 0), (x.get("name") or "").lower()),
-        )
-        return await self.write(data)
-
-    async def delete_station(self, station_id: str) -> dict:
-        data = await self.read()
-        data["dab"] = [item for item in data.get("dab", []) if item.get("id") != station_id]
-        data["fm"] = [item for item in data.get("fm", []) if item.get("id") != station_id]
-        return await self.write(data)
-
-    async def get_station(self, station_id: str):
-        data = await self.read()
-        for item in data.get("dab", []):
-            if item.get("id") == station_id:
-                return item
-        for item in data.get("fm", []):
-            if item.get("id") == station_id:
-                return item
+    async def get_station_by_id(self, station_id: str) -> dict[str, Any] | None:
+        for station in await self.list_stations():
+            if station.get("id") == station_id:
+                return deepcopy(station)
         return None
 
-    async def get_station_target(self, station_id: str):
-        station = await self.get_station(station_id)
-        if not station:
-            return None
+    async def list_favorites(self) -> list[dict[str, Any]]:
+        data = self._read()
+        return deepcopy(data["favorites"])
 
-        stype = station.get("type")
-        if stype == "dab":
-            return {
-                "type": "dab",
-                "station_id": station.get("id"),
-                "target_path": f"/dab/play/{station.get('id')}",
-                "name": station.get("name"),
-            }
+    async def create_favorite(self, alias: str, station_id: str) -> dict[str, Any]:
+        alias = alias.strip()
+        station_id = station_id.strip()
 
-        if stype == "fm":
-            freq = station.get("frequency")
-            return {
-                "type": "fm",
-                "station_id": station.get("id"),
-                "target_path": f"/stream/fm/{freq}",
-                "name": station.get("name"),
-            }
-
-        return None
-
-    async def upsert_favorite(self, alias: str, station_id: str) -> dict:
-        data = await self.read()
-
-        alias_clean = alias.strip()
-        if not alias_clean:
+        if not alias:
             raise ValueError("alias is required")
+        if not station_id:
+            raise ValueError("station_id is required")
 
-        target = await self.get_station_target(station_id)
-        if not target:
+        station = await self.get_station_by_id(station_id)
+        if not station:
             raise ValueError(f"station not found: {station_id}")
 
-        favorite = {
-            "alias": alias_clean,
-            "alias_key": alias_clean.casefold(),
-            "station_id": target["station_id"],
-            "station_type": target["type"],
-            "target_path": target["target_path"],
-            "source_name": target.get("name"),
-            "updated_at": self._utcnow(),
+        target_path = station.get("stream_path")
+        if not target_path:
+            raise ValueError(f"station has no stream_path: {station_id}")
+
+        data = self._read()
+        favorites = data["favorites"]
+
+        record = {
+            "alias": alias,
+            "station_id": station_id,
+            "station_type": station.get("type"),
+            "target_path": target_path,
+            "updated_at": _now_iso(),
         }
 
-        favorites = data.get("favorites", [])
-        by_alias = {
-            item.get("alias_key", (item.get("alias") or "").casefold()): item
-            for item in favorites
-            if item.get("alias") or item.get("alias_key")
-        }
-        by_alias[favorite["alias_key"]] = favorite
+        existing_index = next((i for i, f in enumerate(favorites) if f.get("alias", "").casefold() == alias.casefold()), None)
+        if existing_index is None:
+            favorites.append(record)
+        else:
+            favorites[existing_index] = record
 
-        data["favorites"] = sorted(
-            by_alias.values(),
-            key=lambda x: (x.get("alias") or "").casefold(),
-        )
-        return await self.write(data)
+        self._write(data)
+        return deepcopy(record)
 
-    async def delete_favorite(self, alias: str) -> dict:
-        data = await self.read()
-        wanted = alias.strip().casefold()
-        data["favorites"] = [
-            item for item in data.get("favorites", [])
-            if (item.get("alias_key") or (item.get("alias") or "").casefold()) != wanted
-        ]
-        return await self.write(data)
-
-    async def get_favorite(self, alias: str):
-        data = await self.read()
-        wanted = alias.strip().casefold()
-        for item in data.get("favorites", []):
-            alias_key = item.get("alias_key") or (item.get("alias") or "").casefold()
-            if alias_key == wanted:
-                return item
+    async def resolve_favorite(self, alias: str) -> dict[str, Any] | None:
+        alias_cf = alias.strip().casefold()
+        for item in await self.list_favorites():
+            if (item.get("alias") or "").casefold() == alias_cf:
+                return deepcopy(item)
         return None
