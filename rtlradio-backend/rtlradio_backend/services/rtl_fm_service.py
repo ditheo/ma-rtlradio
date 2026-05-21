@@ -138,7 +138,6 @@ class RtlFmService:
 
                     ffmpeg.stdin.write(chunk)
                     await ffmpeg.stdin.drain()
-                    await asyncio.sleep(0)
             except (BrokenPipeError, ConnectionResetError) as err:
                 LOGGER.warning("[%s] pump pipe closed: %s", request_id, err)
             except asyncio.CancelledError:
@@ -164,7 +163,6 @@ class RtlFmService:
                     LOGGER.warning("[%s] ffmpeg stdout EOF", request_id)
                     break
                 yield out
-                await asyncio.sleep(0)
         except asyncio.CancelledError:
             LOGGER.warning("[%s] stream cancelled", request_id)
             raise
