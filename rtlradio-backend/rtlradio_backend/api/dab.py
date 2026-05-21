@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.encoders import jsonable_encoder
 
 from ..services.dab_service import DabService
 from ..services import radio_state
@@ -87,6 +88,8 @@ async def dab_resolve_by_name(name: str):
                     "block": st.get("block"),
                     "ensemble": st.get("ensemble"),
                     "url_mp3": st.get("url_mp3"),
+                    "stream_path": st.get("stream_path"),
+                    "last_seen": st.get("last_seen"),
                     "error": "station exists but is not playable",
                 }
 
@@ -101,37 +104,43 @@ async def dab_resolve_by_name(name: str):
                     "ensemble": st.get("ensemble"),
                     "url_mp3": st.get("url_mp3"),
                     "stream_path": st.get("stream_path"),
+                    "last_seen": st.get("last_seen"),
                 })
 
         if exact_playable is None:
             if exact_unplayable is not None:
-                return JSONResponse(status_code=404, content=exact_unplayable)
+                return JSONResponse(
+                    status_code=404,
+                    content=jsonable_encoder(exact_unplayable),
+                )
 
             if partial_playable:
                 return JSONResponse(
                     status_code=404,
-                    content={
+                    content=jsonable_encoder({
                         "error": f"station not found with exact playable name: {name}",
                         "matches": partial_playable[:10],
-                    },
+                    }),
                 )
 
             return JSONResponse(
                 status_code=404,
-                content={"error": f"station not found: {name}"},
+                content=jsonable_encoder({
+                    "error": f"station not found: {name}",
+                }),
             )
 
         station_id = exact_playable.get("id")
         if not station_id:
             return JSONResponse(
                 status_code=500,
-                content={
+                content=jsonable_encoder({
                     "error": f"matched station has no id: {name}",
                     "match": exact_playable,
-                },
+                }),
             )
 
-        return {
+        payload = {
             "ok": True,
             "query": name,
             "resolved_name": exact_playable.get("name"),
@@ -139,17 +148,20 @@ async def dab_resolve_by_name(name: str):
             "sid": exact_playable.get("sid"),
             "block": exact_playable.get("block"),
             "ensemble": exact_playable.get("ensemble"),
+            "genre": exact_playable.get("genre"),
             "url_mp3": exact_playable.get("url_mp3"),
             "stream_path": exact_playable.get("stream_path") or f"/dab/play/{station_id}",
             "play_url": exact_playable.get("stream_path") or f"/dab/play/{station_id}",
+            "last_seen": exact_playable.get("last_seen"),
         }
+        return JSONResponse(status_code=200, content=jsonable_encoder(payload))
     except Exception as exc:
         return JSONResponse(
             status_code=500,
-            content={
+            content=jsonable_encoder({
                 "error": str(exc),
                 "name": name,
-            },
+            }),
         )
 
 
@@ -169,8 +181,8 @@ async def dab_play(station_id: str):
     except Exception as exc:
         return JSONResponse(
             status_code=500,
-            content={
+            content=jsonable_encoder({
                 "error": str(exc),
                 "station_id": station_id,
-            },
+            }),
         )
