@@ -15,10 +15,11 @@ class StorageService:
 
     def _default_data(self) -> dict:
         return {
-            "schema_version": 1,
+            "schema_version": 2,
             "updated_at": self._utcnow(),
             "dab": [],
             "fm": [],
+            "favorites": [],
         }
 
     async def _ensure_file(self):
@@ -38,16 +39,21 @@ class StorageService:
             with open(self.path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-        data.setdefault("schema_version", 1)
+        data.setdefault("schema_version", 2)
         data.setdefault("updated_at", self._utcnow())
         data.setdefault("dab", [])
         data.setdefault("fm", [])
+        data.setdefault("favorites", [])
         return data
 
     async def write(self, data: dict) -> dict:
         await self._ensure_file()
         payload = deepcopy(data)
         payload["updated_at"] = self._utcnow()
+        payload.setdefault("schema_version", 2)
+        payload.setdefault("dab", [])
+        payload.setdefault("fm", [])
+        payload.setdefault("favorites", [])
 
         async with self._lock:
             with open(self.path, "w", encoding="utf-8") as f:
@@ -56,70 +62,4 @@ class StorageService:
         return payload
 
     async def get_all_stations(self) -> dict:
-        return await self.read()
-
-    async def get_dab_stations(self) -> list:
-        data = await self.read()
-        return data.get("dab", [])
-
-    async def get_fm_stations(self) -> list:
-        data = await self.read()
-        return data.get("fm", [])
-
-    async def upsert_dab_stations(self, stations: list) -> dict:
-        data = await self.read()
-        current = data.get("dab", [])
-        by_id = {item["id"]: item for item in current if "id" in item}
-
-        for station in stations:
-            by_id[station["id"]] = station
-
-        data["dab"] = sorted(
-            by_id.values(),
-            key=lambda x: (
-                x.get("block", ""),
-                (x.get("name") or "").lower(),
-                x.get("sid", ""),
-            ),
-        )
-        return await self.write(data)
-
-    async def add_fm_station(self, name: str, frequency: float) -> dict:
-        data = await self.read()
-        freq = round(float(frequency), 1)
-        station_id = f"fm:{freq:.1f}"
-
-        station = {
-            "id": station_id,
-            "type": "fm",
-            "name": name,
-            "frequency": freq,
-            "stream_path": f"/stream/fm/{freq}",
-            "last_seen": self._utcnow(),
-        }
-
-        current = data.get("fm", [])
-        by_id = {item["id"]: item for item in current if "id" in item}
-        by_id[station_id] = station
-
-        data["fm"] = sorted(
-            by_id.values(),
-            key=lambda x: (x.get("frequency", 0), (x.get("name") or "").lower()),
-        )
-        return await self.write(data)
-
-    async def delete_station(self, station_id: str) -> dict:
-        data = await self.read()
-        data["dab"] = [item for item in data.get("dab", []) if item.get("id") != station_id]
-        data["fm"] = [item for item in data.get("fm", []) if item.get("id") != station_id]
-        return await self.write(data)
-
-    async def get_station(self, station_id: str):
-        data = await self.read()
-        for item in data.get("dab", []):
-            if item.get("id") == station_id:
-                return item
-        for item in data.get("fm", []):
-            if item.get("id") == station_id:
-                return item
-        return None
+        return await 
