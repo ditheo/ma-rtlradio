@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .api import fm, devices, dab, stations, favorites
+from .api import dab, devices, favorites, fm, fm_catalog, stations
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
@@ -29,6 +29,7 @@ app.include_router(devices.router)
 app.include_router(dab.router)
 app.include_router(stations.router)
 app.include_router(favorites.router)
+app.include_router(fm_catalog.router)
 
 if STATIC_DIR.exists() and STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
@@ -50,17 +51,13 @@ async def root():
         "routes": [
             "/",
             "/admin",
-            "/static/admin.html",
             "/stations",
-            "/stations/dab",
             "/stations/fm",
             "/favorites",
-            "/favorites/resolve/{alias}",
-            "/favorites/play/{alias}",
             "/dab/scan/{block}",
-            "/dab/status",
-            "/dab/mux",
-            "/dab/play/{station_id}",
-            "/stream/fm/{frequency}",
+            "/fm/catalog/countries",
+            "/fm/catalog/states/{countrycode}",
+            "/fm/catalog/stations",
+            "/fm/catalog/import",
         ],
     }
