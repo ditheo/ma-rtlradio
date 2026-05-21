@@ -1,10 +1,13 @@
 ARG BUILD_FROM
-FROM $BUILD_FROM
+FROM ${BUILD_FROM}
 
-# Install rtl-sdr, ffmpeg, curl
-RUN apk add --no-cache rtl-sdr ffmpeg curl kmod || \
-    (apt-get update && apt-get install -y --no-install-recommends \
-        rtl-sdr ffmpeg curl kmod && rm -rf /var/lib/apt/lists/*)
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    rtl-sdr \
+    ffmpeg \
+    curl \
+    kmod
 
 WORKDIR /app
 
