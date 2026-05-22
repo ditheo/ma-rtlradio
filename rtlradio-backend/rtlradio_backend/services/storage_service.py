@@ -99,22 +99,35 @@ class StorageService:
 
     async def upsert_dab_stations(
         self,
-        block: str,
-        ensemble: str | None,
-        stations: list[dict[str, Any]],
+        block_or_payload: str | dict[str, Any],
+        ensemble: str | None = None,
+        stations: list[dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
+        if isinstance(block_or_payload, dict):
+            payload = block_or_payload
+            block = str(payload.get("block") or "").strip()
+            ensemble_name = payload.get("ensemble") or payload.get("ensemble_name") or payload.get("label") or ""
+            station_list = payload.get("stations") or payload.get("services") or []
+        else:
+            block = str(block_or_payload).strip()
+            ensemble_name = ensemble or ""
+            station_list = stations or []
+
+        if not block:
+            raise ValueError("block is required")
+
         data = self._read()
         items = data["dab"]
         saved: list[dict[str, Any]] = []
 
-        for raw in stations:
-            sid = str(raw.get("sid") or "").strip()
+        for raw in station_list:
+            sid = str(raw.get("sid") or raw.get("service_id") or "").strip()
             if not sid:
                 continue
 
             station_id = str(raw.get("id") or f"dab:{block}:{sid}")
-            name = str(raw.get("name") or sid).strip()
-            short_name = str(raw.get("short_name") or name[:8]).strip()
+            name = str(raw.get("name") or raw.get("label") or sid).strip()
+            short_name = str(raw.get("short_name") or raw.get("shortlabel") or name[:8]).strip()
 
             url_mp3 = raw.get("url_mp3")
             if url_mp3 is None and sid:
@@ -130,7 +143,7 @@ class StorageService:
                 "short_name": short_name,
                 "sid": sid,
                 "block": block,
-                "ensemble": raw.get("ensemble") or ensemble or "",
+                "ensemble": raw.get("ensemble") or ensemble_name or "",
                 "genre": raw.get("genre") or "",
                 "bitrate": raw.get("bitrate"),
                 "url_mp3": url_mp3,
