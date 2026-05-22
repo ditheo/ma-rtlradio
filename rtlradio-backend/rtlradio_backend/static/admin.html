@@ -8,17 +8,21 @@
   <style>
     :root,[data-theme="light"]{--bg:#f7f6f2;--surface:#f9f8f5;--surface2:#fbfbf9;--border:#d4d1ca;--text:#28251d;--muted:#7a7974;--primary:#01696f;--primary2:#cedcd8;--ok:#437a22;--err:#a12c7b;--radius:14px;--shadow:0 4px 12px rgba(0,0,0,.08)}
     [data-theme="dark"]{--bg:#171614;--surface:#1c1b19;--surface2:#201f1d;--border:#393836;--text:#cdccca;--muted:#797876;--primary:#4f98a3;--primary2:#313b3b;--ok:#6daa45;--err:#d163a7;--shadow:0 4px 12px rgba(0,0,0,.28)}
-    *{box-sizing:border-box}body{margin:0;font-family:'Satoshi',sans-serif;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer}
+    *{box-sizing:border-box}body{margin:0;font-family:'Satoshi',sans-serif;background:var(--bg);color:var(--text)}button,input,select,textarea,a{font:inherit;color:inherit}button{cursor:pointer}
     .wrap{max-width:1280px;margin:0 auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
     .logo{display:flex;align-items:center;gap:12px}.mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--primary2))}
     .title{font-size:32px;font-weight:700;line-height:1.05}.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
     .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
     .card h2{margin:0 0 14px;font-size:22px}.field{display:grid;gap:8px;margin-bottom:14px}label{font-size:14px;font-weight:700}
-    input,select,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2)}textarea{min-height:130px;resize:vertical}
-    .row{display:flex;gap:10px;flex-wrap:wrap}.btn{border:0;border-radius:10px;padding:12px 14px;font-weight:700}.primary{background:var(--primary);color:#fff}.secondary{background:var(--primary2);color:var(--text)}
-    .status{display:none;padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:18px}.status.show{display:block}.status.ok{background:color-mix(in oklab, var(--ok) 14%, var(--surface))}.status.err{background:color-mix(in oklab, var(--err) 14%, var(--surface))}
+    input,select,textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--surface2)}
+    textarea{min-height:130px;resize:vertical}.row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border:0;border-radius:10px;padding:12px 14px;font-weight:700}
+    .primary{background:var(--primary);color:#fff}.secondary{background:var(--primary2);color:var(--text)}
+    .status{display:none;padding:12px 14px;border-radius:10px;font-size:14px;margin-bottom:18px}
+    .status.show{display:block}.status.ok{background:color-mix(in oklab, var(--ok) 14%, var(--surface))}.status.err{background:color-mix(in oklab, var(--err) 14%, var(--surface))}
     .list{display:grid;gap:10px;max-height:480px;overflow:auto}.item{padding:12px;border-radius:10px;background:var(--surface2);border:1px solid var(--border)}
     .item strong{display:block}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.small{font-size:13px}
+    .hint{font-size:13px;color:var(--muted);margin-top:-6px;margin-bottom:12px}
     @media (max-width:980px){.grid{grid-template-columns:1fr}.title{font-size:26px}}
   </style>
 </head>
@@ -29,7 +33,7 @@
       <div class="mark"></div>
       <div>
         <div class="title">RTL Radio Admin</div>
-        <div class="muted">FM import από Radio Browser και χειροκίνητη προσθήκη local FM.</div>
+        <div class="muted">DAB scan, FM catalog import, manual FM και favorites από μία σελίδα.</div>
       </div>
     </div>
     <button class="btn secondary" id="themeBtn" type="button">Dark mode</button>
@@ -42,11 +46,45 @@
       <h2>Backend</h2>
       <div class="field">
         <label for="baseUrl">Base URL</label>
-        <input id="baseUrl" placeholder="π.χ. http://10.100.0.249:7070">
+        <input id="baseUrl" placeholder="π.χ. http://home.ditheo.eu:7070">
       </div>
       <div class="row">
         <button class="btn secondary" id="loadStationsBtn" type="button">Load stations</button>
         <button class="btn secondary" id="loadFavoritesBtn" type="button">Load favorites</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>DAB scan</h2>
+      <div class="field">
+        <label for="dabBlock">Block</label>
+        <input id="dabBlock" value="5A" placeholder="π.χ. 5A">
+      </div>
+      <div class="hint">Το κουμπί στέλνει POST στο πραγματικό path, π.χ. /dab/scan/5A.</div>
+      <div class="row">
+        <button class="btn primary" id="scanDabBtn" type="button">POST /dab/scan/{block}</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid" style="margin-top:20px">
+    <section class="card">
+      <h2>FM catalog import</h2>
+      <div class="field">
+        <label for="countrySelect">Country</label>
+        <select id="countrySelect"><option value="">Select country</option></select>
+      </div>
+      <div class="field">
+        <label for="stateSelect">State / Region</label>
+        <select id="stateSelect"><option value="">Any state</option></select>
+      </div>
+      <div class="field">
+        <label for="searchName">Station name filter</label>
+        <input id="searchName" placeholder="π.χ. Thessaloniki, Athens, Rock, Jazz">
+      </div>
+      <div class="row">
+        <button class="btn secondary" id="loadCountriesBtn" type="button">Load countries</button>
+        <button class="btn primary" id="searchCatalogBtn" type="button">Search catalog</button>
       </div>
     </section>
 
@@ -68,25 +106,20 @@
 
   <div class="grid" style="margin-top:20px">
     <section class="card">
-      <h2>FM catalog import</h2>
-      <div class="field">
-        <label for="countrySelect">Country</label>
-        <select id="countrySelect"><option value="">Select country</option></select>
+      <h2>Catalog results</h2>
+      <div class="row" style="margin-bottom:14px">
+        <button class="btn primary" id="importSelectedBtn" type="button">Import selected stations</button>
       </div>
-      <div class="field">
-        <label for="stateSelect">State / Region</label>
-        <select id="stateSelect"><option value="">Any state</option></select>
-      </div>
-      <div class="field">
-        <label for="searchName">Station name filter</label>
-        <input id="searchName" placeholder="π.χ. Athens, Rock, Jazz, Best">
-      </div>
-      <div class="row">
-        <button class="btn secondary" id="loadCountriesBtn" type="button">Load countries</button>
-        <button class="btn primary" id="searchCatalogBtn" type="button">Search catalog</button>
-      </div>
+      <div id="catalogList" class="list"></div>
     </section>
 
+    <section class="card">
+      <h2>Stored stations</h2>
+      <div id="stationsList" class="list"></div>
+    </section>
+  </div>
+
+  <div class="grid" style="margin-top:20px">
     <section class="card">
       <h2>Create favorite</h2>
       <div class="field">
@@ -113,34 +146,6 @@
       <div class="row">
         <button class="btn primary" id="postFavoriteBtn" type="button">POST /favorites</button>
         <button class="btn secondary" id="syncJsonBtn" type="button">Sync JSON</button>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid" style="margin-top:20px">
-    <section class="card">
-      <h2>Catalog results</h2>
-      <div class="row" style="margin-bottom:14px">
-        <button class="btn primary" id="importSelectedBtn" type="button">Import selected stations</button>
-      </div>
-      <div id="catalogList" class="list"></div>
-    </section>
-
-    <section class="card">
-      <h2>Stored stations</h2>
-      <div id="stationsList" class="list"></div>
-    </section>
-  </div>
-
-  <div class="grid" style="margin-top:20px">
-    <section class="card">
-      <h2>DAB scan</h2>
-      <div class="field">
-        <label for="dabBlock">Block</label>
-        <input id="dabBlock" value="5A">
-      </div>
-      <div class="row">
-        <button class="btn primary" id="scanDabBtn" type="button">POST /dab/scan/{block}</button>
       </div>
     </section>
 
@@ -183,6 +188,15 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
+async function readJsonSafe(res) {
+  const text = await res.text();
+  try {
+    return { text, data: JSON.parse(text) };
+  } catch {
+    return { text, data: null };
+  }
+}
+
 function syncJson() {
   $('jsonBody').value = JSON.stringify({
     alias: $('alias').value.trim(),
@@ -193,13 +207,14 @@ function syncJson() {
 function renderStations() {
   const wrap = $('stationsList');
   wrap.innerHTML = '';
+
+  const select = $('stationSelect');
+  select.innerHTML = '<option value="">Διάλεξε station_id</option>';
+
   if (!state.stations.length) {
     wrap.innerHTML = '<div class="muted">Δεν υπάρχουν stations ακόμα.</div>';
     return;
   }
-
-  const select = $('stationSelect');
-  select.innerHTML = '<option value="">Διάλεξε station_id</option>';
 
   state.stations.forEach((st) => {
     const el = document.createElement('div');
@@ -207,7 +222,7 @@ function renderStations() {
     el.innerHTML = `
       <strong>${escapeHtml(st.name || st.id)}</strong>
       <div class="mono">${escapeHtml(st.id || '')}</div>
-      <div class="small muted">${escapeHtml(st.stream_path || '')}</div>
+      <div class="small muted">${escapeHtml(st.stream_path || st.url_resolved || st.url || '')}</div>
     `;
     el.addEventListener('click', () => {
       $('stationId').value = st.id || '';
@@ -226,6 +241,7 @@ function renderStations() {
 function renderFavorites() {
   const wrap = $('favoritesList');
   wrap.innerHTML = '';
+
   if (!state.favorites.length) {
     wrap.innerHTML = '<div class="muted">Δεν υπάρχουν favorites ακόμα.</div>';
     return;
@@ -272,6 +288,7 @@ function renderStates() {
 function renderCatalog() {
   const wrap = $('catalogList');
   wrap.innerHTML = '';
+
   if (!state.catalog.length) {
     wrap.innerHTML = '<div class="muted">Δεν υπάρχουν catalog results.</div>';
     return;
@@ -308,24 +325,42 @@ function renderCatalog() {
 
 async function loadStations() {
   const res = await fetch(getBaseUrl() + '/stations');
-  const data = await res.json();
-  state.stations = [...(data.dab || []), ...(data.fm || [])];
+  const { text, data } = await readJsonSafe(res);
+
+  if (!res.ok) {
+    showStatus(`Load stations failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  state.stations = [...(data?.dab || []), ...(data?.fm || [])];
   renderStations();
   showStatus(`Loaded ${state.stations.length} stations.`);
 }
 
 async function loadFavorites() {
   const res = await fetch(getBaseUrl() + '/favorites');
-  const data = await res.json();
-  state.favorites = data.items || [];
+  const { text, data } = await readJsonSafe(res);
+
+  if (!res.ok) {
+    showStatus(`Load favorites failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  state.favorites = data?.items || data?.favorites || [];
   renderFavorites();
   showStatus(`Loaded ${state.favorites.length} favorites.`);
 }
 
 async function loadCountries() {
   const res = await fetch(getBaseUrl() + '/fm/catalog/countries');
-  const data = await res.json();
-  state.countries = data.items || [];
+  const { text, data } = await readJsonSafe(res);
+
+  if (!res.ok) {
+    showStatus(`Load countries failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  state.countries = data?.items || [];
   renderCountries();
   showStatus(`Loaded ${state.countries.length} countries.`);
 }
@@ -337,9 +372,16 @@ async function loadStates() {
     renderStates();
     return;
   }
+
   const res = await fetch(getBaseUrl() + '/fm/catalog/states/' + encodeURIComponent(country));
-  const data = await res.json();
-  state.states = data.items || [];
+  const { text, data } = await readJsonSafe(res);
+
+  if (!res.ok) {
+    showStatus(`Load states failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  state.states = data?.items || [];
   renderStates();
   showStatus(`Loaded ${state.states.length} states for ${country}.`);
 }
@@ -356,8 +398,14 @@ async function searchCatalog() {
   params.set('limit', '100');
 
   const res = await fetch(getBaseUrl() + '/fm/catalog/stations?' + params.toString());
-  const data = await res.json();
-  state.catalog = data.items || [];
+  const { text, data } = await readJsonSafe(res);
+
+  if (!res.ok) {
+    showStatus(`Catalog search failed: ${res.status} ${text}`, false);
+    return;
+  }
+
+  state.catalog = data?.items || [];
   state.selectedCatalog.clear();
   renderCatalog();
   showStatus(`Catalog search returned ${state.catalog.length} stations.`);
@@ -376,13 +424,15 @@ async function importSelectedCatalog() {
     body: JSON.stringify({ items })
   });
 
-  const text = await res.text();
+  const { text, data } = await readJsonSafe(res);
+
   if (!res.ok) {
     showStatus(`Catalog import failed: ${res.status} ${text}`, false);
     return;
   }
 
-  showStatus(`Imported ${items.length} catalog stations.`);
+  const count = data?.count ?? items.length;
+  showStatus(`Imported ${count} catalog stations.`);
   await loadStations();
 }
 
@@ -398,13 +448,14 @@ async function addFmStation() {
     body: JSON.stringify(payload)
   });
 
-  const text = await res.text();
+  const { text } = await readJsonSafe(res);
+
   if (!res.ok) {
     showStatus(`FM create failed: ${res.status} ${text}`, false);
     return;
   }
 
-  showStatus(`FM station added.`);
+  showStatus('FM station added.');
   await loadStations();
 }
 
@@ -423,7 +474,8 @@ async function postFavorite() {
     body: JSON.stringify(payload)
   });
 
-  const text = await res.text();
+  const { text } = await readJsonSafe(res);
+
   if (!res.ok) {
     showStatus(`POST failed: ${res.status} ${text}`, false);
     return;
@@ -435,27 +487,41 @@ async function postFavorite() {
 
 async function scanDab() {
   const block = $('dabBlock').value.trim();
-  const res = await fetch(getBaseUrl() + '/dab/scan/' + encodeURIComponent(block), {
-    method: 'POST'
-  });
+  if (!block) {
+    showStatus('Βάλε DAB block, π.χ. 5A.', false);
+    return;
+  }
 
-  const text = await res.text();
+  const url = getBaseUrl() + '/dab/scan/' + encodeURIComponent(block);
+  const res = await fetch(url, { method: 'POST' });
+  const { text, data } = await readJsonSafe(res);
+
   if (!res.ok) {
     showStatus(`DAB scan failed: ${res.status} ${text}`, false);
     return;
   }
 
-  showStatus(`DAB scan completed for block ${block}.`);
+  const count =
+    data?.count ??
+    data?.stations?.length ??
+    data?.items?.length ??
+    data?.services?.length ??
+    data?.dab?.length ??
+    0;
+
+  showStatus(`DAB scan completed for block ${block}. Found ${count} stations.`);
   await loadStations();
 }
 
 $('baseUrl').value = window.location.origin;
+
 $('themeBtn').addEventListener('click', () => {
   const root = document.documentElement;
   const dark = root.getAttribute('data-theme') === 'dark';
   root.setAttribute('data-theme', dark ? 'light' : 'dark');
   $('themeBtn').textContent = dark ? 'Dark mode' : 'Light mode';
 });
+
 $('loadStationsBtn').addEventListener('click', loadStations);
 $('loadFavoritesBtn').addEventListener('click', loadFavorites);
 $('loadCountriesBtn').addEventListener('click', loadCountries);
@@ -466,6 +532,7 @@ $('addFmBtn').addEventListener('click', addFmStation);
 $('postFavoriteBtn').addEventListener('click', postFavorite);
 $('syncJsonBtn').addEventListener('click', syncJson);
 $('scanDabBtn').addEventListener('click', scanDab);
+
 $('stationSelect').addEventListener('change', (e) => {
   $('stationId').value = e.target.value;
   syncJson();
