@@ -55,6 +55,9 @@ class StorageService:
     async def get_all(self) -> dict[str, Any]:
         return deepcopy(self._read())
 
+    async def get_all_stations(self) -> dict[str, Any]:
+        return await self.get_all()
+
     async def list_stations(self, band: str | None = None) -> list[dict[str, Any]]:
         data = self._read()
         if band == "dab":
@@ -62,6 +65,12 @@ class StorageService:
         if band == "fm":
             return deepcopy(data["fm"])
         return deepcopy(data["dab"] + data["fm"])
+
+    async def get_dab_stations(self) -> list[dict[str, Any]]:
+        return await self.list_stations("dab")
+
+    async def get_fm_stations(self) -> list[dict[str, Any]]:
+        return await self.list_stations("fm")
 
     async def get_station_by_id(self, station_id: str) -> dict[str, Any] | None:
         station_id = station_id.strip()
@@ -106,7 +115,12 @@ class StorageService:
         if isinstance(block_or_payload, dict):
             payload = block_or_payload
             block = str(payload.get("block") or "").strip()
-            ensemble_name = payload.get("ensemble") or payload.get("ensemble_name") or payload.get("label") or ""
+            ensemble_name = (
+                payload.get("ensemble")
+                or payload.get("ensemble_name")
+                or payload.get("label")
+                or ""
+            )
             station_list = payload.get("stations") or payload.get("services") or []
         else:
             block = str(block_or_payload).strip()
@@ -183,6 +197,9 @@ class StorageService:
         }
         return await self.upsert_station("fm", station)
 
+    async def add_fm_station(self, name: str, frequency: float) -> dict[str, Any]:
+        return await self.add_or_update_fm_station(name, frequency)
+
     async def import_fm_catalog_station(self, station: dict[str, Any]) -> dict[str, Any]:
         stationuuid = str(station.get("stationuuid") or "").strip()
         name = str(station.get("name") or "").strip()
@@ -222,6 +239,9 @@ class StorageService:
     async def list_favorites(self) -> list[dict[str, Any]]:
         data = self._read()
         return deepcopy(data["favorites"])
+
+    async def get_favorites(self) -> list[dict[str, Any]]:
+        return await self.list_favorites()
 
     async def create_favorite(self, alias: str, station_id: str) -> dict[str, Any]:
         alias = alias.strip()
@@ -263,6 +283,9 @@ class StorageService:
 
         self._write(data)
         return deepcopy(record)
+
+    async def add_favorite(self, alias: str, station_id: str) -> dict[str, Any]:
+        return await self.create_favorite(alias, station_id)
 
     async def resolve_favorite(self, alias: str) -> dict[str, Any] | None:
         alias_cf = alias.strip().casefold()
